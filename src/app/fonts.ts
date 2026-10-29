@@ -1,6 +1,4 @@
-import type { Metadata } from "next";
 import { Barlow, Figtree, Lato } from "next/font/google";
-import "./globals.css";
 
 // Same families and weights the Laravel app loaded from fonts.bunny.net.
 // Lato has no 600 on Google Fonts, so browsers already rendered it as 700.
@@ -22,17 +20,5 @@ const barlow = Barlow({
   weight: ["400", "500"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Inofarma",
-    template: "%s - Inofarma",
-  },
-};
-
-export default function RootLayout({ children }: LayoutProps<"/">) {
-  return (
-    <html lang="id" className={`${lato.variable} ${figtree.variable} ${barlow.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
-    </html>
-  );
-}
+/** Class names that define the font CSS variables; put them on <html>. */
+export const fontVariables = `${lato.variable} ${figtree.variable} ${barlow.variable}`;

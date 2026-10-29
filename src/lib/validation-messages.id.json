@@ -1,0 +1,123 @@
+{
+    "accepted": "Kolom :attribute wajib disetujui.",
+    "active_url": "Kolom :attribute bukan URL yang valid.",
+    "after": "Kolom :attribute harus berisi tanggal setelah :date.",
+    "after_or_equal": "Kolom :attribute harus berisi tanggal setelah atau sama dengan :date.",
+    "alpha": "Kolom :attribute hanya boleh berisi huruf.",
+    "alpha_dash": "Kolom :attribute hanya boleh berisi huruf, angka, tanda hubung, dan garis bawah.",
+    "alpha_num": "Kolom :attribute hanya boleh berisi huruf dan angka.",
+    "array": "Kolom :attribute harus berupa larik.",
+    "before": "Kolom :attribute harus berisi tanggal sebelum :date.",
+    "before_or_equal": "Kolom :attribute harus berisi tanggal sebelum atau sama dengan :date.",
+    "between": {
+        "array": "Kolom :attribute harus memiliki antara :min sampai :max item.",
+        "file": "Kolom :attribute harus berukuran antara :min sampai :max kilobyte.",
+        "numeric": "Kolom :attribute harus bernilai antara :min sampai :max.",
+        "string": "Kolom :attribute harus terdiri dari :min sampai :max karakter."
+    },
+    "boolean": "Kolom :attribute harus bernilai benar atau salah.",
+    "confirmed": "Konfirmasi kolom :attribute tidak cocok.",
+    "current_password": "Kata sandi salah.",
+    "date": "Kolom :attribute bukan tanggal yang valid.",
+    "date_equals": "Kolom :attribute harus berisi tanggal yang sama dengan :date.",
+    "date_format": "Kolom :attribute tidak sesuai dengan format :format.",
+    "different": "Kolom :attribute dan :other harus berbeda.",
+    "digits": "Kolom :attribute harus terdiri dari :digits angka.",
+    "digits_between": "Kolom :attribute harus terdiri dari :min sampai :max angka.",
+    "email": "Kolom :attribute harus berupa alamat email yang valid.",
+    "ends_with": "Kolom :attribute harus diakhiri salah satu dari: :values.",
+    "exists": "Kolom :attribute yang dipilih tidak valid.",
+    "file": "Kolom :attribute harus berupa berkas.",
+    "filled": "Kolom :attribute wajib diisi.",
+    "gt": {
+        "array": "Kolom :attribute harus memiliki lebih dari :value item.",
+        "file": "Kolom :attribute harus lebih besar dari :value kilobyte.",
+        "numeric": "Kolom :attribute harus lebih besar dari :value.",
+        "string": "Kolom :attribute harus lebih dari :value karakter."
+    },
+    "gte": {
+        "array": "Kolom :attribute harus memiliki :value item atau lebih.",
+        "file": "Kolom :attribute harus lebih besar dari atau sama dengan :value kilobyte.",
+        "numeric": "Kolom :attribute harus lebih besar dari atau sama dengan :value.",
+        "string": "Kolom :attribute harus minimal :value karakter."
+    },
+    "image": "Kolom :attribute harus berupa gambar.",
+    "in": "Kolom :attribute yang dipilih tidak valid.",
+    "integer": "Kolom :attribute harus berupa bilangan bulat.",
+    "ip": "Kolom :attribute harus berupa alamat IP yang valid.",
+    "json": "Kolom :attribute harus berupa JSON yang valid.",
+    "lowercase": "Kolom :attribute harus berupa huruf kecil.",
+    "lt": {
+        "array": "Kolom :attribute harus memiliki kurang dari :value item.",
+        "file": "Kolom :attribute harus lebih kecil dari :value kilobyte.",
+        "numeric": "Kolom :attribute harus lebih kecil dari :value.",
+        "string": "Kolom :attribute harus kurang dari :value karakter."
+    },
+    "lte": {
+        "array": "Kolom :attribute tidak boleh memiliki lebih dari :value item.",
+        "file": "Kolom :attribute harus lebih kecil dari atau sama dengan :value kilobyte.",
+        "numeric": "Kolom :attribute harus lebih kecil dari atau sama dengan :value.",
+        "string": "Kolom :attribute maksimal :value karakter."
+    },
+    "max": {
+        "array": "Kolom :attribute tidak boleh memiliki lebih dari :max item.",
+        "file": "Kolom :attribute tidak boleh lebih besar dari :max kilobyte.",
+        "numeric": "Kolom :attribute tidak boleh lebih besar dari :max.",
+        "string": "Kolom :attribute tidak boleh lebih dari :max karakter."
+    },
+    "mimes": "Kolom :attribute harus berupa berkas bertipe: :values.",
+    "mimetypes": "Kolom :attribute harus berupa berkas bertipe: :values.",
+    "min": {
+        "array": "Kolom :attribute harus memiliki minimal :min item.",
+        "file": "Kolom :attribute harus berukuran minimal :min kilobyte.",
+        "numeric": "Kolom :attribute minimal bernilai :min.",
+        "string": "Kolom :attribute harus terdiri dari minimal :min karakter."
+    },
+    "not_in": "Kolom :attribute yang dipilih tidak valid.",
+    "not_regex": "Format kolom :attribute tidak valid.",
+    "numeric": "Kolom :attribute harus berupa angka.",
+    "password": {
+        "letters": "Kolom :attribute harus mengandung minimal satu huruf.",
+        "mixed": "Kolom :attribute harus mengandung minimal satu huruf besar dan satu huruf kecil.",
+        "numbers": "Kolom :attribute harus mengandung minimal satu angka.",
+        "symbols": "Kolom :attribute harus mengandung minimal satu simbol.",
+        "uncompromised": "Kolom :attribute pernah bocor dalam kebocoran data. Silakan pilih yang lain."
+    },
+    "present": "Kolom :attribute wajib ada.",
+    "prohibited": "Kolom :attribute dilarang diisi.",
+    "regex": "Format kolom :attribute tidak valid.",
+    "required": "Kolom :attribute wajib diisi.",
+    "required_if": "Kolom :attribute wajib diisi bila :other bernilai :value.",
+    "required_unless": "Kolom :attribute wajib diisi kecuali :other bernilai :values.",
+    "required_with": "Kolom :attribute wajib diisi bila terdapat :values.",
+    "required_without": "Kolom :attribute wajib diisi bila tidak terdapat :values.",
+    "same": "Kolom :attribute dan :other harus sama.",
+    "size": {
+        "array": "Kolom :attribute harus berisi :size item.",
+        "file": "Kolom :attribute harus berukuran :size kilobyte.",
+        "numeric": "Kolom :attribute harus bernilai :size.",
+        "string": "Kolom :attribute harus terdiri dari :size karakter."
+    },
+    "starts_with": "Kolom :attribute harus diawali salah satu dari: :values.",
+    "string": "Kolom :attribute harus berupa teks.",
+    "unique": "Kolom :attribute sudah digunakan.",
+    "uploaded": "Kolom :attribute gagal diunggah.",
+    "uppercase": "Kolom :attribute harus berupa huruf besar.",
+    "url": "Format kolom :attribute tidak valid.",
+    "custom": {
+        "attribute-name": {
+            "rule-name": "pesan-kustom"
+        }
+    },
+    "attributes": {
+        "address": "alamat",
+        "city": "kota",
+        "email": "email",
+        "name": "nama",
+        "password": "kata sandi",
+        "password_confirmation": "konfirmasi kata sandi",
+        "phone": "nomor telepon",
+        "promocode": "kode promo",
+        "zip": "kode pos"
+    }
+}

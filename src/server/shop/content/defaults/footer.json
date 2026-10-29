@@ -1,0 +1,26 @@
+{
+    "aboutTitle": "Tentang Apotek Inofarma",
+    "aboutText": "Temukan Solusi Kesehatan Terhemat dan Terlengkap yang Selalu Dekat untuk Masyarakat.",
+    "menuTitle": "Menu Utama",
+    "links": [
+        {
+            "label": "Beranda",
+            "href": "/"
+        },
+        {
+            "label": "Semua Produk",
+            "href": "/shop"
+        },
+        {
+            "label": "Tentang Kami",
+            "href": "http://info.inofarma.com/"
+        }
+    ],
+    "copyright": "inofarma.com. Hak cipta dilindungi.",
+    "company": {
+        "name": "PT Teknologi Medika Pratama",
+        "email": "cs@inofarma.com",
+        "phone": "0812-1401-8964",
+        "address": "Berrybenka Headquarter Lantai 1, Jl. KH Mas Mansyur No.19, Desa/Kelurahan Karet Tengsin, Kec. Tanah Abang, Kota Adm. Jakarta Pusat, Provinsi DKI Jakarta, Kode Pos: 10220"
+    }
+}

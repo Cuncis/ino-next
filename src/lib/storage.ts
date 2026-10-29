@@ -93,7 +93,8 @@ function createDisk(name: UploadsDiskName): UploadsDisk {
 }
 
 function publicDisk(): UploadsDisk {
-  const root = path.resolve(process.env.UPLOADS_PUBLIC_ROOT || path.join(process.cwd(), "public", "storage"));
+  // turbopackIgnore: this folder is runtime data (a symlink to the uploads), never part of the bundle
+  const root = path.resolve(process.env.UPLOADS_PUBLIC_ROOT || path.join(/* turbopackIgnore: true */ process.cwd(), "public", "storage"));
   const baseUrl = `${(process.env.APP_URL ?? "http://localhost:3000").replace(/\/+$/, "")}/storage`;
   const resolve = (filePath: string) => {
     const absolute = path.resolve(root, filePath);

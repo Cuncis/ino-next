@@ -1,0 +1,189 @@
+{
+    "headings": {
+        "recommended": "Rekomendasi Untukmu",
+        "newArrivals": "Produk Kesehatan Terbaru",
+        "trending": "Produk Terlaris Kami",
+        "brands": "Brand Terlaris",
+        "benefits": "Keuntungan Belanja di Inofarma",
+        "nearest": "Apotek Inofarma Terdekat",
+        "testimonials": "Testimoni Sobat Ino"
+    },
+    "hero": [
+        {
+            "image": "/media/images/hero/coming-soon.webp",
+            "href": "/shop",
+            "alt": "Coming soon! Website masih dalam persiapan, stay tuned"
+        },
+        {
+            "image": "/media/images/hero/hero-banner-1.jpg",
+            "href": "/shop",
+            "alt": "Lebih hemat, lebih lengkap, belanja produk kesehatan di Apotek Inofarma"
+        },
+        {
+            "image": "/media/images/hero/hero-banner-2.jpg",
+            "href": "/signup",
+            "alt": "Gabung Sobat Ino, daftar gratis dan dapatkan harga spesial"
+        },
+        {
+            "image": "/media/images/hero/hero-banner-3.jpg",
+            "href": "/apotek/pisangan-lama",
+            "alt": "Inofarma siap antar 24/7"
+        }
+    ],
+    "promo": [
+        {
+            "image": "/media/images/promo/sehat-ga-mesti-mahal.png",
+            "href": "/signup",
+            "alt": "Sehat ga mesti mahal, ayo daftar member Sobat Ino"
+        },
+        {
+            "image": "/media/images/promo/harga-sobat-produk-lengkap.png",
+            "href": "/signup",
+            "alt": "Harga Sobat, Produk Lengkap, gabung Sobat Ino sekarang"
+        }
+    ],
+    "bottom": [
+        {
+            "image": "/media/images/promo/pengiriman-instan-24-jam.png",
+            "href": "/apotek/pisangan-lama",
+            "alt": "Pengiriman instan dengan layanan antar 24 jam"
+        },
+        {
+            "image": "/media/images/promo/temukan-cabang-terdekat.png",
+            "href": "/apotek/pisangan-lama",
+            "alt": "Temukan cabang Inofarma terdekat"
+        },
+        {
+            "image": "/media/images/promo/selalu-lebih-hemat.png",
+            "href": "/shop",
+            "alt": "Selalu lebih hemat, lebih lengkap"
+        }
+    ],
+    "allProductsIcon": "/media/images/categories/semua-produk.png",
+    "brands": [
+        {
+            "name": "Sido Muncul",
+            "image": "/media/images/brands/sido-muncul.png"
+        },
+        {
+            "name": "Stimuno",
+            "image": "/media/images/brands/stimuno.png"
+        },
+        {
+            "name": "Bayer",
+            "image": "/media/images/brands/bayer.png"
+        },
+        {
+            "name": "Bisolvon",
+            "image": "/media/images/brands/bisolvon.png"
+        },
+        {
+            "name": "Vicks",
+            "image": "/media/images/brands/vicks.png"
+        },
+        {
+            "name": "My Baby",
+            "image": "/media/images/brands/my-baby.png"
+        },
+        {
+            "name": "Panadol",
+            "image": "/media/images/brands/panadol.png"
+        },
+        {
+            "name": "Cap Lang",
+            "image": "/media/images/brands/cap-lang.png"
+        },
+        {
+            "name": "Counterpain",
+            "image": "/media/images/brands/counterpain.png"
+        }
+    ],
+    "benefits": [
+        {
+            "label": "Produk Kesehatan Termurah",
+            "image": "/media/images/benefits/produk-kesehatan-termurah.png"
+        },
+        {
+            "label": "Hemat Setiap Hari",
+            "image": "/media/images/benefits/hemat-setiap-hari.png"
+        },
+        {
+            "label": "Produk Lengkap",
+            "image": "/media/images/benefits/produk-lengkap.png"
+        },
+        {
+            "label": "Apotek Buka 24 Jam",
+            "image": "/media/images/benefits/apotek-buka-24-jam.png"
+        },
+        {
+            "label": "Layanan Antar 24 Jam",
+            "image": "/media/images/benefits/layanan-antar-24-jam.png"
+        },
+        {
+            "label": "Mudah Dijangkau",
+            "image": "/media/images/benefits/mudah-dijangkau.png"
+        },
+        {
+            "label": "Konsultasi Gratis",
+            "image": "/media/images/benefits/konsultasi-gratis.png"
+        },
+        {
+            "label": "Benefit Sobat Ino",
+            "image": "/media/images/benefits/benefit-sobat-ino.png"
+        },
+        {
+            "label": "Belanja Praktis",
+            "image": "/media/images/benefits/belanja-praktis.png"
+        }
+    ],
+    "testimonials": [
+        {
+            "name": "Satara Jufry",
+            "branch": "Apotek Inofarma Jengki",
+            "image": "/media/images/testimonials/sobat-ino-2.png",
+            "quote": "baru kali ini review apotek karena sangat impressed dengan pelayanannya! :) btw, saya beli online via chat customer care di WhatsApp."
+        },
+        {
+            "name": "Irfan",
+            "branch": "Apotek Inofarma Kayu Manis",
+            "image": "/media/images/testimonials/sobat-ino-1.png",
+            "quote": "Obat-obatannya lengkap, Banyak promo & Harganya sudah murah ditambah diskon lagi klo kita daftar jadi member, Gratis lagi cuma sebutkan nama dan nomer handphone, Cocok bgt buat langganan yg cari obat dengan resep dokter atau tanpa resep dokter."
+        },
+        {
+            "name": "Jia Nur",
+            "branch": "Apotek Inofarma Pisangan Lama",
+            "image": "/media/images/testimonials/sobat-ino-2.png",
+            "quote": "Pelayanan ramah dan cepat, farmasinya informatif dan membatu menjelaskan obat dengan jelas, stock juga cukup lengkap, bersih, dan sangat memudahkan saat butuh obat mendesak👍🏻"
+        },
+        {
+            "name": "Ismi Khairani",
+            "branch": "Apotek Inofarma Kalisari",
+            "image": "/media/images/testimonials/sobat-ino-1.png",
+            "quote": "Suka banget belanja obat disini, pelayanannya ramah, apalagi kakak nya yang agak muda itu, ramah banget bintang 7 deh kalo bisa."
+        }
+    ],
+    "texts": [
+        {
+            "title": "Apotek Inofarma: Solusi Kesehatan Terhemat dan Terlengkap",
+            "body": "Apotek Inofarma hadir sebagai solusi kesehatan terpercaya dengan jaringan apotek yang mudah dijangkau dan layanan yang selalu mengutamakan kebutuhan pelanggan. Kami menyediakan produk kesehatan terlengkap, vitamin, suplemen, dan perawatan diri dengan harga terhemat dan layanan yang bersahabat. Apotek Inofarma juga memberikan konsultasi obat gratis dan cek kesehatan dasar dengan apoteker profesional. Kami berkomitmen untuk selalu menghadirkan program dan penawaran menarik, siap membantu Anda menjaga kesehatan dengan cara yang mudah, aman, dan praktis."
+        },
+        {
+            "title": "Belanja Obat Praktis dengan Layanan Antar 24 Jam",
+            "body": "Belanja produk kesehatan kini lebih mudah bersama Apotek Inofarma. Dengan layanan apotek buka 24 jam dan antar obat gratis*, kami siap memenuhi kebutuhan kesehatan Anda kapan saja, di mana saja. Pemesanan obat dapat dilakukan dengan mudah melalui WhatsApp, sehingga Anda dapat menerima obat dengan cepat tanpa repot. Apotek Inofarma juga menyediakan tes darah cepat (asam urat, gula darah, kolesterol total) dengan harga terjangkau untuk membantu Anda memantau kesehatan secara berkala. Selain itu, pelanggan setia Sobat Ino dapat menikmati berbagai benefit member eksklusif (untuk pembelian di outlet). Semua produk dijamin asli, terdaftar BPOM, dan berkualitas tinggi. Bersama Apotek Inofarma, kesehatan selalu lebih dekat, hemat, dan bersahabat.\n\n*S&K berlaku"
+        }
+    ],
+    "contactTitle": "Hubungi Inofarma Kapan Saja",
+    "contactIntro": "Hubungi kami untuk pertanyaan seputar produk, pesanan, maupun layanan dari Apotek Inofarma. Kami selalu siap untuk membantu kebutuhan kesehatan Anda.",
+    "contacts": [
+        {
+            "icon": "phone",
+            "title": "Layanan Pelanggan Inofarma",
+            "lines": "Email: cs@inofarma.com\nWhatsApp: 0812-1401-8964\nPhone: (021) 50959952"
+        },
+        {
+            "icon": "email",
+            "title": "Layanan Pengaduan Konsumen",
+            "lines": "Direktorat Jenderal Perlindungan Konsumen Tertib Niaga\nKementerian Perdagangan RI\nWhatsApp: 0853-1111-1010"
+        }
+    ]
+}

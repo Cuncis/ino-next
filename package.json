@@ -45,6 +45,7 @@
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
+    "@types/google.maps": "^3.66.8",
     "@types/node": "^24.19.2",
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",

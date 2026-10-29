@@ -1,0 +1,11 @@
+ignoredBuiltDependencies:
+  - esbuild
+  - msgpackr-extract
+  - sharp
+  - unrs-resolver
+peerDependencyRules:
+  allowedVersions:
+    eslint: "10"
+allowedDeprecatedVersions:
+  # Transitive via @google-cloud/storage -> node-fetch@3; on Node >=17 it just re-exports the built-in DOMException
+  node-domexception: "1.0.0"

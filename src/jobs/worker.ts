@@ -1,8 +1,9 @@
 import cron from "node-cron";
+import { APP_TIMEZONE } from "@/lib/timezone";
 
 // Mirrors the Laravel scheduler in ~/inofarma/routes/console.php,
 // which runs in the app timezone (config/app.php)
-const timezone = "Asia/Jakarta";
+const timezone = APP_TIMEZONE;
 
 // pesanan:kadaluwarsakan — return stock and expire orders unpaid after 24 hours
 cron.schedule("*/5 * * * *", () => {}, { timezone, name: "expire-unpaid-orders" });

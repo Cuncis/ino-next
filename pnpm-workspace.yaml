@@ -1,8 +1,9 @@
-ignoredBuiltDependencies:
-  - esbuild
-  - msgpackr-extract
-  - sharp
-  - unrs-resolver
+# Install scripts that stay off: each one only checks for, or builds, a prebuilt binary pnpm already installed
+allowBuilds:
+  esbuild: false
+  msgpackr-extract: false
+  sharp: false
+  unrs-resolver: false
 peerDependencyRules:
   allowedVersions:
     eslint: "10"

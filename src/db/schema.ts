@@ -1,12 +1,27 @@
-import { pgTable, bigserial, uuid, varchar, bigint, serial, customType, text, smallint, timestamp, integer, date, jsonb, boolean, numeric, index, foreignKey, primaryKey, unique, check } from "drizzle-orm/pg-core"
+import { pgTable, bigserial, uuid, varchar, bigint, serial, customType, text, smallint, integer, date, jsonb, boolean, numeric, index, foreignKey, primaryKey, unique, check } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
+
+// Postgres case-insensitive text (emails, codes, slugs, names). drizzle-kit pull
+// leaves custom types untyped; re-apply this after every pull.
+const citext = customType<{ data: string }>({ dataType: () => "citext" });
+
+// Laravel stores `timestamp without time zone` as Jakarta wall-clock time
+// (config('app.timezone')), so read and write it as +07:00 instead of Drizzle's
+// default UTC. Jakarta has had a fixed +07:00 offset with no daylight saving since 1964.
+// drizzle-kit pull generates pg-core's `timestamp`; re-apply this after every pull.
+const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;
+const timestamp = customType<{ data: Date; driverData: string; config: { precision?: number } }>({
+	dataType: (config) => `timestamp(${config?.precision ?? 0})`,
+	toDriver: (value) => new Date(value.getTime() + JAKARTA_OFFSET_MS).toISOString().slice(0, 19).replace("T", " "),
+	fromDriver: (value) => new Date(`${String(value).replace(" ", "T")}+07:00`),
+});
 
 
 
 export const attributes = pgTable("attributes", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	name: customType({ dataType: () => 'citext' })().notNull(),
-	slug: customType({ dataType: () => 'citext' })().notNull(),
+	name: citext().notNull(),
+	slug: citext().notNull(),
 	type: varchar({ length: 255 }).default("pilihan").notNull(),
 	values: jsonb(),
 	createdAt: timestamp("created_at", { precision: 0 }),
@@ -71,9 +86,9 @@ export const branchStocks = pgTable("branch_stocks", {
 
 export const branches = pgTable("branches", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	code: customType({ dataType: () => 'citext' })().notNull(),
-	name: customType({ dataType: () => 'citext' })().notNull(),
-	slug: customType({ dataType: () => 'citext' })().notNull(),
+	code: citext().notNull(),
+	name: citext().notNull(),
+	slug: citext().notNull(),
 	addressLine: varchar("address_line", { length: 255 }).notNull(),
 	kelurahan: varchar({ length: 80 }),
 	kecamatan: varchar({ length: 80 }),
@@ -173,8 +188,8 @@ export const carts = pgTable("carts", {
 
 export const categories = pgTable("categories", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	name: customType({ dataType: () => 'citext' })().notNull(),
-	slug: customType({ dataType: () => 'citext' })().notNull(),
+	name: citext().notNull(),
+	slug: citext().notNull(),
 	description: text(),
 	imagePath: varchar("image_path", { length: 255 }),
 	parentId: bigint("parent_id", { mode: 'number' }),
@@ -251,7 +266,7 @@ export const couponBranch = pgTable("coupon_branch", {
 
 export const coupons = pgTable("coupons", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	code: customType({ dataType: () => 'citext' })().notNull(),
+	code: citext().notNull(),
 	type: varchar({ length: 255 }).notNull(),
 	value: integer().default(0).notNull(),
 	minimumPurchase: bigint("minimum_purchase", { mode: 'number' }),
@@ -302,9 +317,9 @@ export const customerPasswordResetTokens = pgTable("customer_password_reset_toke
 
 export const customers = pgTable("customers", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	code: customType({ dataType: () => 'citext' })().notNull(),
+	code: citext().notNull(),
 	name: varchar({ length: 255 }).notNull(),
-	email: customType({ dataType: () => 'citext' })().notNull(),
+	email: citext().notNull(),
 	emailVerifiedAt: timestamp("email_verified_at", { precision: 0 }),
 	phone: varchar({ length: 30 }),
 	phoneVerifiedAt: timestamp("phone_verified_at", { precision: 0 }),
@@ -346,7 +361,7 @@ export const inventoryBatches = pgTable("inventory_batches", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
 	branchId: bigint("branch_id", { mode: 'number' }).notNull(),
 	productId: bigint("product_id", { mode: 'number' }).notNull(),
-	batchNumber: customType({ dataType: () => 'citext' })("batch_number").notNull(),
+	batchNumber: citext("batch_number").notNull(),
 	expiresAt: date("expires_at").notNull(),
 	quantity: integer().default(0).notNull(),
 	costPrice: bigint("cost_price", { mode: 'number' }),
@@ -549,7 +564,7 @@ export const orderItems = pgTable("order_items", {
 
 export const orders = pgTable("orders", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	number: customType({ dataType: () => 'citext' })().notNull(),
+	number: citext().notNull(),
 	branchId: bigint("branch_id", { mode: 'number' }).notNull(),
 	customerId: bigint("customer_id", { mode: 'number' }).notNull(),
 	fulfilment: varchar({ length: 255 }).notNull(),
@@ -673,9 +688,9 @@ export const productImages = pgTable("product_images", {
 
 export const products = pgTable("products", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	sku: customType({ dataType: () => 'citext' })().notNull(),
+	sku: citext().notNull(),
 	name: varchar({ length: 255 }).notNull(),
-	slug: customType({ dataType: () => 'citext' })().notNull(),
+	slug: citext().notNull(),
 	categoryId: bigint("category_id", { mode: 'number' }).notNull(),
 	supplierId: bigint("supplier_id", { mode: 'number' }),
 	price: bigint({ mode: 'number' }).notNull(),
@@ -816,7 +831,7 @@ export const shipments = pgTable("shipments", {
 
 export const stockTransfers = pgTable("stock_transfers", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	code: customType({ dataType: () => 'citext' })().notNull(),
+	code: citext().notNull(),
 	fromBranchId: bigint("from_branch_id", { mode: 'number' }).notNull(),
 	toBranchId: bigint("to_branch_id", { mode: 'number' }).notNull(),
 	productId: bigint("product_id", { mode: 'number' }).notNull(),
@@ -858,7 +873,7 @@ export const stockTransfers = pgTable("stock_transfers", {
 
 export const subscribers = pgTable("subscribers", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	email: customType({ dataType: () => 'citext' })().notNull(),
+	email: citext().notNull(),
 	status: varchar({ length: 20 }).default("berlangganan").notNull(),
 	subscribedAt: timestamp("subscribed_at", { precision: 0 }),
 	unsubscribedAt: timestamp("unsubscribed_at", { precision: 0 }),
@@ -871,7 +886,7 @@ export const subscribers = pgTable("subscribers", {
 
 export const suppliers = pgTable("suppliers", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
-	code: customType({ dataType: () => 'citext' })().notNull(),
+	code: citext().notNull(),
 	name: varchar({ length: 255 }).notNull(),
 	contactPerson: varchar("contact_person", { length: 255 }),
 	email: varchar({ length: 255 }),
@@ -892,7 +907,7 @@ export const suppliers = pgTable("suppliers", {
 export const users = pgTable("users", {
 	id: bigserial({ mode: 'number' }).primaryKey(),
 	name: varchar({ length: 255 }).notNull(),
-	email: customType({ dataType: () => 'citext' })().notNull(),
+	email: citext().notNull(),
 	emailVerifiedAt: timestamp("email_verified_at", { precision: 0 }),
 	password: varchar({ length: 255 }).notNull(),
 	rememberToken: varchar("remember_token", { length: 100 }),

@@ -18,7 +18,7 @@
     "@aws-sdk/client-s3": "^3.1158.0",
     "@base-ui/react": "^1.9.0",
     "@google-cloud/storage": "^8.4.0",
-    "@hookform/resolvers": "^6.0.2",
+    "@hookform/resolvers": "^6.0.1",
     "@tanstack/react-table": "^9.3.1",
     "bcryptjs": "^3.0.3",
     "better-auth": "^1.7.14",
@@ -27,7 +27,7 @@
     "cn": "^0.5.0",
     "drizzle-orm": "1.0.0-rc.5",
     "ioredis": "^6.0.0",
-    "lucide-react": "^1.63.0",
+    "lucide-react": "^1.62.0",
     "next": "^16.4.1",
     "node-cron": "^4.6.0",
     "nodemailer": "^10.2.1",
@@ -60,7 +60,7 @@
     "typescript": "^5",
     "vitest": "^5.0.5"
   },
-  "packageManager": "pnpm@10.33.1",
+  "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": ">=24"
   }

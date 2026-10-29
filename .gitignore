@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Laravel uploads, symlinked like `php artisan storage:link`
+/public/storage
+
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

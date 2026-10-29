@@ -4,11 +4,89 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Inofarma palette, copied from the Laravel app's resources/css/app.css.
+ * Fonts come from next/font in src/app/layout.tsx as CSS variables.
+ *
+ * `muted` is the old app's gray text color (`text-muted`, used all over the
+ * storefront), so it wins over shadcn's light-gray `muted` surface. shadcn
+ * components use `bg-accent` for that surface instead (same color).
+ */
+@theme {
+  --font-sans:
+    var(--font-lato), var(--font-figtree), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-shop:
+    var(--font-barlow), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-display:
+    var(--font-barlow), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  --color-brand: #0900aa;
+  --color-brand-lift: #6c63ff;
+  --color-link: #005bd3;
+
+  --color-blush: #ebebf8;
+  --color-ink: #232323;
+  --color-lilac: #faf9ff;
+  --color-shell: #d8dce3;
+  --color-star: #fe7900;
+  --color-line: #eeeeee;
+  --color-muted: #666666;
+  --color-faint: #999999;
+  --color-sale: #24ce30;
+
+  --color-success: #24ce30;
+  --color-success-deep: #147a1d;
+
+  --color-warning: #fe7900;
+  --color-warning-deep: #b35400;
+
+  --color-cream: #ffefe9;
+  --color-canvas: #f3f5f6;
+
+  --color-admin-bg: #f3f5f6;
+  --color-admin-nav: #ffffff;
+  --color-admin-card: #ffffff;
+  --color-admin-heading: #313b5e;
+  --color-admin-body: #5d7186;
+  --color-admin-muted: #8a99ad;
+  --color-admin-border: #e6e9f0;
+  --color-admin-hover: #f2f3f9;
+
+  --color-admin-dark-bg: #161a25;
+  --color-admin-dark-nav: #1d2231;
+  --color-admin-dark-card: #1d2231;
+  --color-admin-dark-heading: #e6e9f0;
+  --color-admin-dark-body: #a4aec1;
+  --color-admin-dark-muted: #7a869c;
+  --color-admin-dark-border: #2b3245;
+  --color-admin-dark-hover: #252b3c;
+
+  --color-danger: #ef5f5f;
+  --color-danger-deep: #c62828;
+
+  --color-info: #4ecac2;
+  --color-info-deep: #0f766e;
+
+  --container-app: 430px;
+
+  --spacing-appbar: 48px;
+  --spacing-tabbar: 60px;
+  --spacing-control: 52px;
+  --spacing-topbar: 70px;
+  --spacing-sidebar: 280px;
+  --spacing-sidebar-sm: 76px;
+
+  --shadow-card: 0 3px 4px 0 rgba(0, 0, 0, 0.03);
+  --shadow-pop: 0 8px 24px -4px rgba(19, 25, 43, 0.14);
+}
+
+/* shadcn/ui tokens, for its own components only */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -30,7 +108,6 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -55,7 +132,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* brand #0900aa */
+  --primary: oklch(0.336 0.229 265.5);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -90,8 +168,9 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  /* brand-lift #6c63ff reads on dark backgrounds */
+  --primary: oklch(0.597 0.224 279.8);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -117,14 +196,176 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/*
+ * Everything below is copied from the Laravel app's resources/css/app.css.
+ */
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+*/
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
+}
+
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  /* Storefront text that sets no color of its own: dark gray, not pure black. */
+  html.shop-zoom body {
+    color: #232323;
+  }
+}
+
+@layer base {
+  /**
+   * The storefront screens are locked to a mobile-width canvas on every device, so
+   * the page itself never scrolls — each screen scrolls inside its own frame.
+   */
+  html,
   body {
-    @apply bg-background text-foreground;
+    height: 100%;
   }
-  html {
-    @apply font-sans;
+}
+
+@layer base {
+  /**
+   * Barlow, the storefront's typeface (the `@theme` block above): headings
+   * (`font-display`) at Medium, body copy (`font-shop`, applied once on
+   * `MobileLayout`'s root) at Regular. A plain weight utility placed
+   * alongside either class — `font-display font-bold`, say — still wins,
+   * since Tailwind's own utilities layer is emitted after this one.
+   */
+  .font-display {
+    font-weight: 500;
+  }
+
+  .font-shop {
+    font-weight: 400;
+  }
+}
+
+@layer base {
+  /**
+   * Chrome/Safari paint an autofilled field's own background (usually a
+   * light blue or yellow) instead of whatever the input's `background`
+   * utility says, and it ignores `background-color` entirely — the only
+   * override that actually works is a huge inset `box-shadow` in the color
+   * we want, painted over the browser's own fill. Admin forms get their
+   * dark-mode card color instead of white, so an autofilled field doesn't
+   * suddenly look like a light-mode hole in a dark screen.
+   */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: #232323;
+    box-shadow: 0 0 0 1000px #ffffff inset;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-text-fill-color: #e6e9f0;
+    box-shadow: 0 0 0 1000px #1d2231 inset;
+  }
+}
+
+@layer base {
+  /*
+   * Tailwind's reset gives buttons the default arrow cursor. Anything you can
+   * press should show the pointing hand, and say so when hovered: coloured
+   * buttons darken a little, plain ones dim a little.
+   */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  select,
+  label:has(input[type='checkbox']),
+  label:has(input[type='radio']) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  button,
+  a.bg-success,
+  a.bg-brand,
+  a.bg-ink,
+  a.bg-warning {
+    transition: filter 0.15s ease, background-color 0.15s ease;
+  }
+
+  button:not(:disabled):hover,
+  a.bg-success:hover,
+  a.bg-brand:hover,
+  a.bg-ink:hover,
+  a.bg-warning:hover {
+    filter: brightness(0.92);
+  }
+}
+
+@layer base {
+  /* The checkout copies Shopify's default checkout, which uses the system font stack. */
+  .shopify-checkout {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  .shopify-checkout a:not([class*='text-']) {
+    color: #1773b0;
+  }
+}
+
+/*
+ * Storefront on a desktop monitor: the layout is drawn at phone-friendly pixel
+ * sizes, so at a browser's 100% it reads small. `zoom` scales the whole
+ * storefront the way the browser's own zoom would (150% on a wide monitor),
+ * with media queries still seeing the real window width, so the desktop layout
+ * stays on. Smaller windows get a smaller factor so the page still fits.
+ * `vh` units are scaled by `zoom` too, so full-height boxes divide it back out.
+ * The admin panel is left alone.
+ */
+@media (min-width: 1280px) {
+  html.shop-zoom {
+    --shop-zoom: 1.25;
+    zoom: var(--shop-zoom);
+  }
+}
+
+@media (min-width: 1700px) {
+  html.shop-zoom {
+    --shop-zoom: 1.5;
+  }
+}
+
+@media (min-width: 1280px) {
+  html.shop-zoom .min-h-screen {
+    min-height: calc(100vh / var(--shop-zoom));
+  }
+
+  html.shop-zoom .h-screen {
+    height: calc(100vh / var(--shop-zoom));
+  }
+
+  html.shop-zoom .\[height\:100dvh\] {
+    height: calc(100dvh / var(--shop-zoom));
   }
 }

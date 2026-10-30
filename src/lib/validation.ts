@@ -91,26 +91,39 @@ function message(rule: string, field: string, attributes: Record<string, string>
 
 export type ValidationResult<T> = { data: T; errors: null } | { data: null; errors: ValidationErrors };
 
+/**
+ * @param messages per-rule overrides, Laravel's `['phone.regex' => '...']`
+ * @param attributes display names for fields, Laravel's custom attributes
+ */
 export function validate<T extends Record<string, unknown>>(
   rawInput: unknown,
   rules: Rules,
+  messages: Record<string, string> = {},
   attributes: Record<string, string> = {},
 ): ValidationResult<T> {
   const input = (prepareInput(rawInput) ?? {}) as Record<string, unknown>;
   const errors: ValidationErrors = {};
+  const failedImplicit = new Set<string>();
 
   for (const [field, fieldRules] of Object.entries(rules)) {
     const value = input[field];
     const present = field in input && value !== undefined;
     const nullable = fieldRules.includes("nullable");
     const numeric = fieldRules.some((rule) => rule === "numeric" || rule === "integer");
-    const fail = (text: string) => (errors[field] ??= []).push(text);
+    const fail = (rule: string, text: string) => {
+      (errors[field] ??= []).push(messages[`${field}.${rule}`] ?? text);
+
+      if (IMPLICIT.has(rule)) {
+        failedImplicit.add(field);
+      }
+    };
 
     for (const ruleText of fieldRules) {
       const colon = ruleText.indexOf(":");
       const rule = colon === -1 ? ruleText : ruleText.slice(0, colon);
       const parameterText = colon === -1 ? "" : ruleText.slice(colon + 1);
-      const parameters = parameterText === "" ? [] : parameterText.split(",");
+      // a regex may itself contain commas, so it is never split
+      const parameters = parameterText === "" ? [] : rule === "regex" ? [parameterText] : parameterText.split(",");
 
       if (rule === "nullable" || rule === "bail") {
         continue;
@@ -120,54 +133,71 @@ export function validate<T extends Record<string, unknown>>(
         continue;
       }
 
+      // Laravel stops checking a field once a required-type rule has failed for it
+      if (fieldRules.some((other) => IMPLICIT.has(other.split(":")[0])) && errors[field]?.length && failedImplicit.has(field)) {
+        break;
+      }
+
       switch (rule) {
         case "required":
-          if (isEmpty(value)) fail(message(rule, field, attributes, {}));
+          if (isEmpty(value)) fail(rule, message(rule, field, attributes, {}));
           break;
         case "required_with":
           if (parameters.some((other) => !isEmpty(input[other])) && isEmpty(value)) {
-            fail(message(rule, field, attributes, { values: parameters.map((other) => attributeName(other, attributes)).join(" / ") }));
+            fail(rule, message(rule, field, attributes, { values: parameters.map((other) => attributeName(other, attributes)).join(" / ") }));
           }
           break;
         case "accepted":
-          if (!["yes", "on", "1", 1, true, "true"].includes(value as never)) fail(message(rule, field, attributes, {}));
+          if (!["yes", "on", "1", 1, true, "true"].includes(value as never)) fail(rule, message(rule, field, attributes, {}));
           break;
         case "string":
-          if (typeof value !== "string") fail(message(rule, field, attributes, {}));
+          if (typeof value !== "string") fail(rule, message(rule, field, attributes, {}));
           break;
         case "numeric":
-          if (!isNumeric(value)) fail(message(rule, field, attributes, {}));
+          if (!isNumeric(value)) fail(rule, message(rule, field, attributes, {}));
           break;
         case "integer":
-          if (!isNumeric(value) || !Number.isInteger(Number(value))) fail(message(rule, field, attributes, {}));
+          if (!isNumeric(value) || !Number.isInteger(Number(value))) fail(rule, message(rule, field, attributes, {}));
           break;
         case "boolean":
-          if (![true, false, 0, 1, "0", "1"].includes(value as never)) fail(message(rule, field, attributes, {}));
+          if (![true, false, 0, 1, "0", "1"].includes(value as never)) fail(rule, message(rule, field, attributes, {}));
           break;
         case "email":
-          if (typeof value !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) fail(message(rule, field, attributes, {}));
+          if (typeof value !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) fail(rule, message(rule, field, attributes, {}));
           break;
         case "digits":
           if (!/^\d+$/.test(String(value)) || String(value).length !== Number(parameters[0])) {
-            fail(message(rule, field, attributes, { digits: parameters[0] }));
+            fail(rule, message(rule, field, attributes, { digits: parameters[0] }));
           }
           break;
+        case "confirmed":
+          if (value !== input[`${field}_confirmation`]) fail(rule, message(rule, field, attributes, {}));
+          break;
+        case "regex": {
+          const match = /^\/([\s\S]*)\/([a-z]*)$/.exec(parameters[0] ?? "");
+
+          if (!match) throw new Error(`Invalid regex rule for ${field}`);
+          if (typeof value !== "string" || !new RegExp(match[1], match[2].replace(/[^imsu]/g, "")).test(value)) {
+            fail(rule, message(rule, field, attributes, {}));
+          }
+          break;
+        }
         case "in":
-          if (!parameters.includes(String(value))) fail(message(rule, field, attributes, {}));
+          if (!parameters.includes(String(value))) fail(rule, message(rule, field, attributes, {}));
           break;
         case "min": {
-          if (sizeOf(value, numeric) < Number(parameters[0])) fail(message(rule, field, attributes, { min: parameters[0] }, sizeType(value, numeric)));
+          if (sizeOf(value, numeric) < Number(parameters[0])) fail(rule, message(rule, field, attributes, { min: parameters[0] }, sizeType(value, numeric)));
           break;
         }
         case "max": {
-          if (sizeOf(value, numeric) > Number(parameters[0])) fail(message(rule, field, attributes, { max: parameters[0] }, sizeType(value, numeric)));
+          if (sizeOf(value, numeric) > Number(parameters[0])) fail(rule, message(rule, field, attributes, { max: parameters[0] }, sizeType(value, numeric)));
           break;
         }
         case "between": {
           const size = sizeOf(value, numeric);
 
           if (size < Number(parameters[0]) || size > Number(parameters[1])) {
-            fail(message(rule, field, attributes, { min: parameters[0], max: parameters[1] }, sizeType(value, numeric)));
+            fail(rule, message(rule, field, attributes, { min: parameters[0], max: parameters[1] }, sizeType(value, numeric)));
           }
           break;
         }
@@ -178,6 +208,20 @@ export function validate<T extends Record<string, unknown>>(
   }
 
   return Object.keys(errors).length === 0 ? { data: input as T, errors: null } : { data: null, errors };
+}
+
+/** Adds an error the way a failing rule would (for checks the validator can't run itself, such as `unique`). */
+export function addError(errors: ValidationErrors | null, field: string, text: string): ValidationErrors {
+  const next = { ...(errors ?? {}) };
+
+  (next[field] ??= []).push(text);
+
+  return next;
+}
+
+/** Laravel's `unique` message for a field. */
+export function uniqueMessage(field: string, attributes: Record<string, string> = {}): string {
+  return message("unique", field, attributes, {});
 }
 
 /** Laravel's 422 JSON for a failed validation: `{ message, errors }`. */

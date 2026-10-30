@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { flashForNextPage, type Flash } from "./flash";
 
 /**
  * Shared bits for Route Handlers that stand in for Laravel controllers.
@@ -45,5 +46,43 @@ export async function jsonBody(request: Request): Promise<Record<string, unknown
     return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
   } catch {
     return {};
+  }
+}
+
+/** True for requests from the storefront's own JavaScript (`@/lib/inertia` and fetch calls). */
+export function wantsJson(request: Request): boolean {
+  return request.headers.get("x-requested-with") === "XMLHttpRequest" || (request.headers.get("accept") ?? "").includes("application/json");
+}
+
+/**
+ * Laravel's `redirect($url)->with(...)` for a controller action: JSON
+ * `{ redirect, flash }` for a form request, else a 303 redirect with the flash in a cookie.
+ */
+export async function redirectTo(request: Request, url: string, flash?: Flash): Promise<Response> {
+  if (wantsJson(request)) {
+    return Response.json({ redirect: url, flash });
+  }
+
+  if (flash) {
+    await flashForNextPage(flash);
+  }
+
+  return Response.redirect(new URL(url, request.url), 303);
+}
+
+/** Laravel's `back()`: the page the request came from. */
+export function previousUrl(request: Request, fallback = "/"): string {
+  const referer = request.headers.get("referer");
+
+  if (!referer) {
+    return fallback;
+  }
+
+  try {
+    const url = new URL(referer);
+
+    return url.host === new URL(request.url).host ? `${url.pathname}${url.search}` : fallback;
+  } catch {
+    return fallback;
   }
 }

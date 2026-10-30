@@ -70,6 +70,8 @@ type NextRouter = ReturnType<typeof useRouter>;
 // The App Router instance, kept here so the module-level `router` can navigate
 let nextRouter: NextRouter | null = null;
 let setFlashState: ((flash: Flash | null) => void) | null = null;
+// a flash that came with a redirect, shown on the page the redirect leads to
+let pendingFlash: Flash | null = null;
 const navigateListeners = new Set<() => void>();
 
 export function InertiaProvider({ shared, children }: { shared: SharedProps; children: ReactNode }) {
@@ -84,10 +86,12 @@ export function InertiaProvider({ shared, children }: { shared: SharedProps; chi
     setFlashState = setFlash;
   }, [appRouter]);
 
-  // Inertia's `navigate` event fires after every visit, including the first page load
+  // Inertia's `navigate` event fires after every visit, including the first page load.
+  // A flash lasts one page: it is cleared on the next visit, unless it came with that visit.
   useEffect(() => {
     if (!firstRender.current) {
-      setFlash(null);
+      setFlash(pendingFlash);
+      pendingFlash = null;
     }
 
     firstRender.current = false;
@@ -217,8 +221,12 @@ async function send(method: Method, url: string, data: unknown, options: VisitOp
       return;
     }
 
-    if (body.flash) {
-      setFlashState?.({ success: body.flash.success ?? null, error: body.flash.error ?? null });
+    const flash = body.flash ? { success: body.flash.success ?? null, error: body.flash.error ?? null } : null;
+
+    if (body.redirect && flash) {
+      pendingFlash = flash;
+    } else if (flash) {
+      setFlashState?.(flash);
     }
 
     if (body.redirect) {

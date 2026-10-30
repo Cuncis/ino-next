@@ -1,5 +1,10 @@
 import Wishlist from "@/views/shop/Wishlist";
+import { ShopPage } from "../shop-page";
 
 export default function Page() {
-  return <Wishlist />;
+  return (
+    <ShopPage>
+      <Wishlist />
+    </ShopPage>
+  );
 }

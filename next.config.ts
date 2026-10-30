@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   // a 404 page for URLs outside both root layouts (storefront and admin)
   experimental: {
     globalNotFound: true,
+    // Pages are checked for "instant" navigations only where they opt in. The storefront
+    // waits for each page's data on navigation, as the Inertia app did (src/app/(shop)/layout.tsx).
+    instantInsights: {
+      validationLevel: "manual-warning",
+    },
   },
   partialPrefetching: true,
   turbopack: {

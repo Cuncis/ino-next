@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useForm } from '@/lib/inertia';
+import { useForm, usePage } from '@/lib/inertia';
 import MobileLayout from '@/layouts/MobileLayout';
 import AppBar from '@/components/shop/AppBar';
 import Button from '@/components/shop/Button';
@@ -14,7 +14,8 @@ import Field from '@/components/shop/Field';
  * client-side rather than passed as a prop.
  */
 export default function NewPassword() {
-    const params = new URLSearchParams(window.location.search);
+    // read through usePage(), not window, so the page can also render on the server
+    const params = new URLSearchParams(usePage().url.split('?')[1] ?? '');
 
     const { data, setData, post, processing, errors } = useForm({
         token: params.get('token') ?? '',

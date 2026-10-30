@@ -1,0 +1,17 @@
+Inofarma: https://app-url.invalid
+
+# PLACEHOLDERGREETING
+
+PLACEHOLDERINTRO
+
+PLACEHOLDERACTIONTEXT: https://action-url.invalid/
+
+PLACEHOLDEROUTRO
+
+Regards,
+Inofarma
+
+If you're having trouble clicking the "PLACEHOLDERACTIONTEXT" button, copy and paste the URL below
+into your web browser: [https://action-url.invalid/](https://action-url.invalid/)
+
+© 2026 Inofarma. All rights reserved.

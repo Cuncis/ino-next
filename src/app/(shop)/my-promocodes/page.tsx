@@ -1,5 +1,10 @@
 import MyPromocodes from "@/views/shop/MyPromocodes";
+import { ShopPage } from "../shop-page";
 
 export default function Page() {
-  return <MyPromocodes />;
+  return (
+    <ShopPage>
+      <MyPromocodes />
+    </ShopPage>
+  );
 }

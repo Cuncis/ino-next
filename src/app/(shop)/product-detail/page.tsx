@@ -1,5 +1,10 @@
 import ProductDetail from "@/views/shop/ProductDetail";
+import { ShopPage } from "../shop-page";
 
 export default function Page() {
-  return <ProductDetail />;
+  return (
+    <ShopPage>
+      <ProductDetail />
+    </ShopPage>
+  );
 }

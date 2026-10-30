@@ -155,7 +155,7 @@ interface ProductTile {
 interface ShopUser {
     name: string;
     email: string;
-    phone: string;
+    phone: string | null;
 }
 
 interface Review {

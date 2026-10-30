@@ -1,5 +1,10 @@
 import Categories from "@/views/shop/Categories";
+import { ShopPage } from "../shop-page";
 
 export default function Page() {
-  return <Categories />;
+  return (
+    <ShopPage>
+      <Categories />
+    </ShopPage>
+  );
 }

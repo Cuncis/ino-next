@@ -1,4 +1,5 @@
 import { redirectTo } from "@/lib/http";
+import { forgetGuestCart } from "@/server/shop/cart";
 import { logoutCustomer } from "@/server/shop/customer-auth";
 import { customerForAction } from "@/server/shop/customer-guard";
 
@@ -11,6 +12,8 @@ export async function POST(request: Request) {
   }
 
   await logoutCustomer();
+  // Laravel invalidated the whole session, the guest cart in it included
+  await forgetGuestCart();
 
   return redirectTo(request, "/signin");
 }

@@ -80,3 +80,33 @@ describe("stopping after a required rule fails", () => {
     });
   });
 });
+
+// Expected messages from the Laravel app's validator (php artisan tinker)
+describe("checkout rules", () => {
+  it("handles required_if, arrays, nested fields and camelCase names like Laravel", () => {
+    expect(
+      validate(
+        { fulfilment: "ambil", courier: "x", note: "a".repeat(501), kota: null },
+        {
+          fulfilment: ["required", "in:antar,ambil"],
+          pickupBranchId: ["required_if:fulfilment,ambil", "nullable", "string"],
+          courier: ["nullable", "array"],
+          "courier.courierCompany": ["nullable", "string"],
+          note: ["nullable", "string", "max:500"],
+          kota: ["required", "nullable", "string"],
+        },
+        {},
+        { kota: "kota/kabupaten" },
+      ).errors,
+    ).toEqual({
+      pickupBranchId: ["Kolom pickup branch id wajib diisi bila fulfilment bernilai ambil."],
+      courier: ["Kolom courier harus berupa larik."],
+      note: ["Kolom note tidak boleh lebih dari 500 karakter."],
+      kota: ["Kolom kota/kabupaten wajib diisi."],
+    });
+    expect(validate({ courier: { courierCompany: 5 } }, { "courier.courierCompany": ["nullable", "string"] }).errors).toEqual({
+      "courier.courierCompany": ["Kolom courier.courier company harus berupa teks."],
+    });
+    expect(validate({ fulfilment: "antar" }, { pickupBranchId: ["required_if:fulfilment,ambil", "nullable", "string"] }).errors).toBeNull();
+  });
+});

@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { FLASH_HEADER, parseFlash } from "@/lib/flash";
 import type { SharedProps } from "@/lib/inertia";
+import { CartManager } from "./cart";
 import { catalogForStorefront } from "./catalog";
 import { chatSettingsForStorefront } from "./content/chat-settings";
 import { footerForStorefront } from "./content/footer";
@@ -28,7 +29,7 @@ export async function sharedProps(): Promise<SharedProps> {
     catalog: catalog as unknown as Catalog,
     chatSettings,
     siteFooter,
-    // Badge on the "Pesanan" tab: wired up with the cart (step 4)
-    cartCount: 0,
+    // the badge on the "Pesanan" tab
+    cartCount: await new CartManager(customer).count(),
   };
 }

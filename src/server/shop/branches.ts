@@ -137,6 +137,23 @@ export async function branchesForProduct(sku: string, point: Point) {
   );
 }
 
+/**
+ * Where a checkout order can be collected: every active pickup branch, stock or not (the
+ * company covers a gap at pickup). Nearest first, then by name. (StorefrontBranchPresenter::forPickup)
+ */
+export async function pickupBranches(point: Point) {
+  const rows = await selectBranches({ where: [active, eq(branches.supportsPickup, true)], point, orderBy: [asc(branches.id)] });
+
+  return rows
+    .map((branch) => ({ ...base(branch), fullAddress: fullAddress(branch), available: 1, selectable: branch.status === "aktif" }))
+    .sort(
+      (a, b) =>
+        Number(!a.selectable) - Number(!b.selectable) ||
+        (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) ||
+        (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
+    );
+}
+
 /** Whether `/apotek/{slug}` has a page to show; checked in src/proxy.ts so a missing one answers 404 before streaming. */
 export async function branchPageExists(slug: string): Promise<boolean> {
   const [branch] = await db

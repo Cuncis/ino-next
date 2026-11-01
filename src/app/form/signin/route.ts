@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { clientIp, csrfMismatchResponse, isSameOrigin, jsonBody, redirectTo } from "@/lib/http";
 import { rateLimiter } from "@/lib/rate-limit";
 import { validate, validationErrorResponse } from "@/lib/validation";
+import { CartManager } from "@/server/shop/cart";
 import { attemptCustomerLogin, loginCustomer } from "@/server/shop/customer-auth";
 import { INTENDED_COOKIE } from "@/server/shop/intended";
 
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
   }
 
   await loginCustomer(customer, [true, 1, "1", "true", "on", "yes"].includes(body.remember as never));
-  // Merging a guest's session cart into the account comes with the cart (step 4)
+  // a cart built while browsing as a guest isn't lost by signing in
+  await new CartManager(null).mergeGuestIntoCustomer(customer);
 
   const store = await cookies();
   const intended = store.get(INTENDED_COOKIE)?.value;

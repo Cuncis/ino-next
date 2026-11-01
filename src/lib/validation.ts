@@ -24,6 +24,21 @@ const UNTRIMMED = new Set(["password", "password_confirmation", "current_passwor
 /** Rules that run even when the field is missing or null. */
 const IMPLICIT = new Set(["required", "required_with", "required_without", "required_if", "accepted"]);
 
+/** A field's value; `courier.courierCompany` reads inside `courier`, as Laravel's dot notation does. */
+function valueAt(input: Record<string, unknown>, field: string): { present: boolean; value: unknown } {
+  let current: unknown = input;
+
+  for (const key of field.split(".")) {
+    if (typeof current !== "object" || current === null || !(key in current)) {
+      return { present: false, value: undefined };
+    }
+
+    current = (current as Record<string, unknown>)[key];
+  }
+
+  return { present: current !== undefined, value: current };
+}
+
 export function prepareInput(input: unknown, key = ""): unknown {
   if (typeof input === "string") {
     const value = UNTRIMMED.has(key) ? input : input.trim();
@@ -72,7 +87,8 @@ function sizeType(value: unknown, numeric: boolean): "numeric" | "array" | "stri
 }
 
 function attributeName(field: string, attributes: Record<string, string>): string {
-  return attributes[field] ?? MESSAGES.attributes[field] ?? field.replace(/_/g, " ");
+  // Laravel's Str::snake() then spaces: `pickupBranchId` reads "pickup branch id"
+  return attributes[field] ?? MESSAGES.attributes[field] ?? field.replace(/(.)(?=[A-Z])/g, "$1_").toLowerCase().replace(/_/g, " ");
 }
 
 function message(rule: string, field: string, attributes: Record<string, string>, replacements: Record<string, string>, type?: string): string {
@@ -106,8 +122,7 @@ export function validate<T extends Record<string, unknown>>(
   const failedImplicit = new Set<string>();
 
   for (const [field, fieldRules] of Object.entries(rules)) {
-    const value = input[field];
-    const present = field in input && value !== undefined;
+    const { present, value } = valueAt(input, field);
     const nullable = fieldRules.includes("nullable");
     const numeric = fieldRules.some((rule) => rule === "numeric" || rule === "integer");
     const fail = (rule: string, text: string) => {
@@ -147,11 +162,23 @@ export function validate<T extends Record<string, unknown>>(
             fail(rule, message(rule, field, attributes, { values: parameters.map((other) => attributeName(other, attributes)).join(" / ") }));
           }
           break;
+        case "required_if": {
+          const other = valueAt(input, parameters[0]).value;
+
+          if (parameters.slice(1).includes(String(other)) && isEmpty(value)) {
+            fail(rule, message(rule, field, attributes, { other: attributeName(parameters[0], attributes), value: String(other) }));
+          }
+          break;
+        }
         case "accepted":
           if (!["yes", "on", "1", 1, true, "true"].includes(value as never)) fail(rule, message(rule, field, attributes, {}));
           break;
         case "string":
           if (typeof value !== "string") fail(rule, message(rule, field, attributes, {}));
+          break;
+        case "array":
+          // a JSON object is a PHP (associative) array too
+          if (typeof value !== "object" || value === null) fail(rule, message(rule, field, attributes, {}));
           break;
         case "numeric":
           if (!isNumeric(value)) fail(rule, message(rule, field, attributes, {}));
@@ -210,6 +237,20 @@ export function validate<T extends Record<string, unknown>>(
   return Object.keys(errors).length === 0 ? { data: input as T, errors: null } : { data: null, errors };
 }
 
+/**
+ * Laravel's ValidationException::withMessages(): thrown from deep inside a service (the
+ * cart, checkout) and answered by the Route Handler as a 422, like a failed form.
+ */
+export class ValidationException extends Error {
+  constructor(readonly errors: ValidationErrors) {
+    super(Object.values(errors).flat()[0] ?? "The given data was invalid.");
+  }
+
+  static withMessages(messages: Record<string, string>): ValidationException {
+    return new ValidationException(Object.fromEntries(Object.entries(messages).map(([field, text]) => [field, [text]])));
+  }
+}
+
 /** Adds an error the way a failing rule would (for checks the validator can't run itself, such as `unique`). */
 export function addError(errors: ValidationErrors | null, field: string, text: string): ValidationErrors {
   const next = { ...(errors ?? {}) };
@@ -231,4 +272,13 @@ export function validationErrorResponse(errors: ValidationErrors): Response {
   const text = others > 0 ? `${all[0]} (and ${others} more ${others === 1 ? "error" : "errors"})` : all[0];
 
   return Response.json({ message: text, errors }, { status: 422 });
+}
+
+/** The 422 for a ValidationException thrown by a service; any other error is thrown on. */
+export function validationExceptionResponse(error: unknown): Response {
+  if (error instanceof ValidationException) {
+    return validationErrorResponse(error.errors);
+  }
+
+  throw error;
 }

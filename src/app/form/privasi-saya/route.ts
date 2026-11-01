@@ -3,6 +3,7 @@ import { carts, customerAddresses, customers, db } from "@/db";
 import { jsonBody, redirectTo } from "@/lib/http";
 import { verifyLaravelPassword } from "@/lib/password";
 import { validate, validationErrorResponse } from "@/lib/validation";
+import { forgetGuestCart } from "@/server/shop/cart";
 import { logoutCustomer } from "@/server/shop/customer-auth";
 import { customerForAction } from "@/server/shop/customer-guard";
 
@@ -41,6 +42,8 @@ export async function DELETE(request: Request) {
   });
 
   await logoutCustomer();
+  // Laravel invalidated the whole session, the guest cart in it included
+  await forgetGuestCart();
 
   return redirectTo(request, "/", { success: "Akun Anda telah dihapus." });
 }

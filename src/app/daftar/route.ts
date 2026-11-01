@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { customers, db } from "@/db";
-import { nextCode } from "@/lib/code-sequence";
+import { insertWithNextCode, nextCode } from "@/lib/code-sequence";
 import { csrfMismatchResponse, isSameOrigin, jsonBody, redirectTo } from "@/lib/http";
 import { throttle } from "@/lib/rate-limit";
 import { addError, prepareInput, uniqueMessage, validate, validationErrorResponse } from "@/lib/validation";
@@ -51,21 +51,26 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
-  const [customer] = await db
-    .insert(customers)
-    .values({
-      code: await nextCode({ table: customers, column: customers.code, prefix: "CUS-" }),
-      name: input.name,
-      phone: input.phone,
-      email: input.email,
-      password: await hashPassword(input.password),
-      status: "aktif",
-      consentAt: now,
-      consentVersion: CONSENT_VERSION,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning();
+  const password = await hashPassword(input.password);
+  const [customer] = await insertWithNextCode(
+    async () =>
+      db
+        .insert(customers)
+        .values({
+          code: await nextCode({ table: customers, column: customers.code, prefix: "CUS-" }),
+          name: input.name,
+          phone: input.phone,
+          email: input.email,
+          password,
+          status: "aktif",
+          consentAt: now,
+          consentVersion: CONSENT_VERSION,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+    "customers_code_unique",
+  );
 
   await loginCustomer(customer);
   await sendEmailVerification(customer);

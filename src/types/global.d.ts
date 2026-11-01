@@ -295,7 +295,7 @@ interface OrderDetailData {
     discount: number;
     shipping: number;
     tax: number;
-    paymentMethod: string;
+    paymentMethod: string | null;
     note: string | null;
     date: string;
     branch: CartBranch | null;
@@ -317,5 +317,5 @@ interface TrackOrderData {
         trackingLink: string | null;
         statusLabel: string | null;
     };
-    pickup: null | { code: string; qrSvg: string | null; expiresAt: string };
+    pickup: null | { code: string; qrSvg: string | null; expiresAt: string | null };
 }

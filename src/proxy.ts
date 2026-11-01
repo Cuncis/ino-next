@@ -7,6 +7,7 @@ import { customerForSessionToken } from "@/server/shop/customer-auth";
 import { INACTIVE_MESSAGE } from "@/server/shop/customer-guard";
 import { INTENDED_COOKIE } from "@/server/shop/intended";
 import { LOCATION_COOKIE, locationCookieOptions } from "@/server/shop/location";
+import { findCustomerOrder } from "@/server/shop/orders";
 
 /**
  * Runs before every page and route, doing what Laravel's routing and middleware did:
@@ -15,7 +16,8 @@ import { LOCATION_COOKIE, locationCookieOptions } from "@/server/shop/location";
  *   its Route Handler under /form, since Next.js can't put a page and a handler at one path.
  * - Pages behind the `customer` middleware send signed-out visitors to /signin and
  *   remember where they were going; an account that is no longer active is signed out.
- * - `/apotek/{slug}` for a branch with no page answers 404 before the page streams.
+ * - `/apotek/{slug}` for a branch with no page, and `/pesanan/{nomor}` or `/track-order/{nomor}`
+ *   for an order that isn't the customer's, answer 404 before the page streams.
  * - The cart and checkout send an empty (or over-limit) cart away before anything renders,
  *   as their Laravel controllers did; a redirect from a streaming page would paint it first.
  * - A flash message from the previous request is handed to this page, then forgotten.
@@ -64,6 +66,13 @@ export async function proxy(request: NextRequest) {
       }
 
       return response;
+    }
+
+    const order = /^\/(?:pesanan|track-order)\/([^/]+)$/.exec(pathname);
+
+    if (order && !(await findCustomerOrder(customer.id, safeDecode(order[1])))) {
+      // Laravel's abort(404, 'Pesanan tidak ditemukan.'), answered before the page streams
+      return NextResponse.rewrite(new URL("/__not-found", request.url), { status: 404 });
     }
   }
 
@@ -114,6 +123,14 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
+}
+
+function safeDecode(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 }
 
 /** Shop\CartController::index() and CheckoutController::show()'s redirects, or null to render. */

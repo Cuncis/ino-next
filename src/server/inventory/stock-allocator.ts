@@ -3,7 +3,7 @@ import { branchStocks, db, inventoryBatches, inventoryMovements, type DbExecutor
 
 /**
  * Takes stock out of a branch, batch by batch. Ported from
- * App\Support\Inventory\StockAllocator::consume() (receive() comes with the admin panel).
+ * App\Support\Inventory\StockAllocator: consume() takes it out, receive() puts it back.
  *
  * FEFO: the batch that expires soonest goes first, because leaving an old batch on the
  * shelf while a newer one sells means the old one expires there. Runs in a transaction
@@ -13,6 +13,9 @@ import { branchStocks, db, inventoryBatches, inventoryMovements, type DbExecutor
  * decided which branch is meant.
  */
 export type BatchManifest = { batch_id: number; batch_number: string; expires_at: string; quantity: number }[];
+
+/** What receive() takes: a sale's manifest, or a delivery with a cost price per batch. */
+export type ReceiptManifest = { batch_number: string; expires_at: string; quantity: number; cost_price?: number | null }[];
 
 /** A movement would take a branch's available stock below zero. Thrown before anything is written. */
 export class InsufficientStockError extends Error {
@@ -112,4 +115,99 @@ export async function consumeStock(options: {
 
     return manifest;
   });
+}
+
+/**
+ * Puts stock into a branch, batch by batch: a return gives each unit back to the batch it
+ * was taken from (the manifest consumeStock() wrote), and a missing batch is created.
+ */
+export async function receiveStock(options: {
+  branchId: number;
+  productId: number;
+  manifest: ReceiptManifest;
+  type: string;
+  reference?: { type: string; id: number };
+  userId?: number | null;
+  note?: string | null;
+  executor?: DbExecutor;
+}): Promise<void> {
+  const { branchId, productId, manifest, type, reference, userId = null, note = null, executor = db } = options;
+
+  await executor.transaction(async (tx) => {
+    const now = new Date();
+    const where = and(eq(branchStocks.branchId, branchId), eq(branchStocks.productId, productId));
+    let [stock] = await tx.select().from(branchStocks).where(where).limit(1).for("update");
+
+    if (!stock) {
+      [stock] = await tx
+        .insert(branchStocks)
+        .values({ branchId, productId, quantity: 0, reservedQuantity: 0, reorderPoint: 0, isListed: true, createdAt: now, updatedAt: now })
+        .returning();
+    }
+
+    let total = 0;
+
+    for (const entry of manifest) {
+      const [batch] = await tx
+        .select()
+        .from(inventoryBatches)
+        .where(and(eq(inventoryBatches.branchId, branchId), eq(inventoryBatches.productId, productId), eq(inventoryBatches.batchNumber, entry.batch_number)))
+        .limit(1)
+        .for("update");
+
+      const [saved] = batch
+        ? await tx
+            .update(inventoryBatches)
+            .set({
+              expiresAt: entry.expires_at,
+              costPrice: entry.cost_price ?? batch.costPrice,
+              receivedAt: batch.receivedAt ?? jakartaToday(now),
+              quantity: batch.quantity + entry.quantity,
+              updatedAt: now,
+            })
+            .where(eq(inventoryBatches.id, batch.id))
+            .returning()
+        : await tx
+            .insert(inventoryBatches)
+            .values({
+              branchId,
+              productId,
+              batchNumber: entry.batch_number,
+              expiresAt: entry.expires_at,
+              costPrice: entry.cost_price ?? null,
+              receivedAt: jakartaToday(now),
+              quantity: entry.quantity,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+
+      total += entry.quantity;
+
+      await tx.insert(inventoryMovements).values({
+        branchId,
+        productId,
+        inventoryBatchId: saved.id,
+        type,
+        quantity: entry.quantity,
+        balanceAfter: stock.quantity + total,
+        referenceType: reference?.type ?? null,
+        referenceId: reference?.id ?? null,
+        note,
+        userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await tx
+      .update(branchStocks)
+      .set({ quantity: sql`${branchStocks.quantity} + ${total}`, updatedAt: now })
+      .where(eq(branchStocks.id, stock.id));
+  });
+}
+
+/** `received_at` is a date: today in Jakarta. */
+function jakartaToday(now: Date): string {
+  return new Date(now.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }

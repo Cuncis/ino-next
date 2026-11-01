@@ -86,3 +86,11 @@ export function previousUrl(request: Request, fallback = "/"): string {
     return fallback;
   }
 }
+
+/**
+ * Inertia::location(): leave the app for another site (DOKU's payment page). The Inertia
+ * client gets a 409 naming the URL and does a full page visit; a plain form gets a redirect.
+ */
+export function externalRedirect(request: Request, url: string): Response {
+  return wantsJson(request) ? Response.json({ location: url }, { status: 409 }) : Response.redirect(new URL(url, request.url), 303);
+}

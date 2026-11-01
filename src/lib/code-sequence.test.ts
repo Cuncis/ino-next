@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { db, settings } from "@/db";
 import { withRollback } from "@/test/db";
-import { nextCode } from "./code-sequence";
+import { insertWithNextCode, nextCode } from "./code-sequence";
 
 afterAll(() => db.$client.end());
 
@@ -32,5 +32,21 @@ describe("nextCode", () => {
       expect(await nextCode({ table: settings, column: settings.key, prefix: "ZZ_-", executor: tx })).toBe("ZZ_-001");
       expect(await nextCode({ table: settings, column: settings.key, prefix: "ZZ%-", pad: 5, executor: tx })).toBe("ZZ%-00778");
     });
+  });
+});
+
+describe("insertWithNextCode", () => {
+  const taken = Object.assign(new Error("Failed query"), { cause: { code: "23505", constraint: "customers_code_unique" } });
+
+  it("tries again when another request took the code, and gives up on anything else", async () => {
+    let calls = 0;
+
+    await expect(insertWithNextCode(async () => (++calls < 3 ? Promise.reject(taken) : "CUS-012"), "customers_code_unique")).resolves.toBe("CUS-012");
+    expect(calls).toBe(3);
+
+    const other = Object.assign(new Error("Failed query"), { cause: { code: "23505", constraint: "customers_email_unique" } });
+
+    await expect(insertWithNextCode(async () => Promise.reject(other), "customers_code_unique")).rejects.toBe(other);
+    await expect(insertWithNextCode(async () => Promise.reject(taken), "customers_code_unique", 2)).rejects.toBe(taken);
   });
 });

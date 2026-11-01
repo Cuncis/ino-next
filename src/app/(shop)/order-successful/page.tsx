@@ -1,9 +1,8 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
-import { db, orderItems, orders, productImages, products } from "@/db";
-import { displayUrl } from "@/lib/storage";
+import { asc, eq } from "drizzle-orm";
+import { db, orderItems } from "@/db";
 import OrderSuccessful from "@/views/shop/OrderSuccessful";
-import { PRODUCT_PLACEHOLDER_IMAGE } from "@/server/shop/catalog";
 import { currentCustomer } from "@/server/shop/customer-auth";
+import { findCustomerOrder, orderItemImages } from "@/server/shop/orders";
 import { ShopPage } from "../shop-page";
 
 /**
@@ -24,39 +23,20 @@ export default async function Page({ searchParams }: PageProps<"/order-successfu
 }
 
 async function recap(customerId: number, number: string) {
-  const [order] = await db
-    .select()
-    .from(orders)
-    .where(and(eq(orders.customerId, customerId), eq(orders.number, number), isNull(orders.deletedAt)))
-    .limit(1);
+  const order = await findCustomerOrder(customerId, number);
 
   if (!order) {
     return null;
   }
 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)).orderBy(asc(orderItems.id));
-  const ids = items.flatMap((item) => (item.productId === null ? [] : [item.productId]));
-  // a line whose product was deleted since shows no photo (Eloquent hid the product)
-  const live = ids.length
-    ? await db
-        .select({ id: products.id })
-        .from(products)
-        .where(and(inArray(products.id, ids), isNull(products.deletedAt)))
-    : [];
-  const productIds = live.map((product) => product.id);
-  const images = productIds.length
-    ? await db
-        .select({ productId: productImages.productId, path: productImages.path })
-        .from(productImages)
-        .where(inArray(productImages.productId, productIds))
-        .orderBy(asc(productImages.position), asc(productImages.id))
-    : [];
+  const images = await orderItemImages(items);
 
   return {
     items: items.map((item) => ({
       sku: item.sku ?? "",
       name: item.productName,
-      image: item.productId === null || !productIds.includes(item.productId) ? null : displayUrl(images.find((image) => image.productId === item.productId)?.path ?? PRODUCT_PLACEHOLDER_IMAGE),
+      image: item.productId === null ? null : (images.get(item.productId) ?? null),
       quantity: item.quantity,
       lineTotal: item.lineTotal,
     })),

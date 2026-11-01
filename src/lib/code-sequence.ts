@@ -48,3 +48,22 @@ function leadingInteger(value: string): number {
 function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (character) => `\\${character}`);
 }
+
+/**
+ * Runs an insert that takes `nextCode()`, again with a fresh code when another request
+ * took the same one in the meantime (two sign-ups at once both computing CUS-010). The
+ * Laravel app had the same race and answered the loser with a 500.
+ */
+export async function insertWithNextCode<T>(insert: () => Promise<T>, uniqueConstraint: string, attempts = 5): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await insert();
+    } catch (error) {
+      const cause = (error as { cause?: { code?: string; constraint?: string } }).cause ?? (error as { code?: string; constraint?: string });
+
+      if (attempt >= attempts || cause.code !== "23505" || cause.constraint !== uniqueConstraint) {
+        throw error;
+      }
+    }
+  }
+}

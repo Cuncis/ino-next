@@ -1,13 +1,15 @@
 import { randomUUID } from "node:crypto";
-import { asc, count, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import { customers, db, orderItems, orders, payments } from "@/db";
 import { normalizePhone } from "@/lib/phone";
+import { cancelOrder } from "@/server/orders/order-cancellation";
+import { updateOrder } from "@/server/orders/order-updates";
 import { DokuClient } from "./doku-client";
 
 /**
- * One order's relationship with DOKU, ported from App\Support\Payments\DokuPaymentService.
- * This step brings opening a checkout session; folding notifications back into the
- * order (webhook, reconcile) comes with the payment webhooks (step 5).
+ * One order's relationship with DOKU, ported from App\Support\Payments\DokuPaymentService:
+ * opening a checkout session, and folding DOKU's notifications (the webhook, or a status
+ * check when the shopper comes back) into the payment and the order.
  */
 type Order = typeof orders.$inferSelect;
 type Payment = typeof payments.$inferSelect;
@@ -117,4 +119,133 @@ function lineItems(order: Order, items: (typeof orderItems.$inferSelect)[]) {
   }
 
   return [{ id: String(order.id), name: `Pesanan ${order.number}`, quantity: 1, price: order.grandTotal, sku: order.number }];
+}
+
+/** The payment statuses this app stores (`payments.status`). */
+export type PaymentStatus = "success" | "failed" | "expired" | "refunded" | "pending";
+
+/** DOKU's vocabulary to this app's `payments.status`, or null for anything else. */
+export function mapDokuStatus(dokuStatus: unknown): PaymentStatus | null {
+  switch (dokuStatus) {
+    case "SUCCESS":
+      return "success";
+    case "FAILED":
+    case "TIMEOUT":
+      return "failed";
+    case "EXPIRED":
+      return "expired";
+    case "REFUNDED":
+      return "refunded";
+    case "PENDING":
+    case "REDIRECT":
+      return "pending";
+    default:
+      return null;
+  }
+}
+
+function field(value: unknown, key: string): unknown {
+  return value !== null && typeof value === "object" ? (value as Record<string, unknown>)[key] : undefined;
+}
+
+/**
+ * Folds a verified DOKU notification into the payment and its order, or returns null
+ * when it names no known payment (or a successful payment of the wrong amount).
+ *
+ * Safe to repeat, which DOKU says it may do: once a payment is in the reported status,
+ * a repeat only records the payload again and never touches the order a second time.
+ */
+export async function applyDokuNotification(payload: unknown): Promise<Payment | null> {
+  const invoiceNumber = field(field(payload, "order"), "invoice_number");
+  const status = mapDokuStatus(field(field(payload, "transaction"), "status"));
+  const channelId = field(field(payload, "channel"), "id");
+  const channel = channelId === undefined || channelId === null ? null : String(channelId);
+
+  if (!invoiceNumber || !status || (typeof invoiceNumber !== "string" && typeof invoiceNumber !== "number")) {
+    return null;
+  }
+
+  const [payment] = await db.select().from(payments).where(eq(payments.invoiceNumber, String(invoiceNumber))).limit(1);
+
+  if (!payment) {
+    return null;
+  }
+
+  // The signature proves DOKU sent it; the amount makes sure the money matches this
+  // attempt before an order is ever marked paid.
+  const amount = field(field(payload, "order"), "amount");
+
+  if (status === "success" && amount !== undefined && amount !== null && Math.round(Number(amount)) !== payment.amount) {
+    console.warn("Notifikasi DOKU ditolak: jumlah tidak cocok.", { invoice_number: invoiceNumber, expected: payment.amount, received: amount });
+
+    return null;
+  }
+
+  return db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(payments).where(eq(payments.id, payment.id)).limit(1).for("update");
+    const alreadyApplied = locked.status === status;
+    const now = new Date();
+
+    const [updated] = await tx
+      .update(payments)
+      .set({
+        status,
+        channel: channel ?? locked.channel,
+        paidAt: status === "success" ? (locked.paidAt ?? now) : locked.paidAt,
+        refundedAt: status === "refunded" ? (locked.refundedAt ?? now) : locked.refundedAt,
+        rawNotification: payload,
+        updatedAt: now,
+      })
+      .where(eq(payments.id, locked.id))
+      .returning();
+
+    if (!alreadyApplied) {
+      const [order] = await tx.select().from(orders).where(eq(orders.id, locked.orderId)).limit(1).for("update");
+
+      if (status === "success") {
+        await updateOrder(
+          order,
+          {
+            paymentStatus: "lunas",
+            paymentMethod: channel ?? order.paymentMethod,
+            paidAt: order.paidAt ?? now,
+            status: order.status === "menunggu pembayaran" ? "pembayaran diterima" : order.status,
+          },
+          tx,
+        );
+      } else if (status === "expired") {
+        // DOKU expired the session before the customer paid: the same as the payment
+        // window running out (pesanan:kadaluwarsakan), only reported by DOKU.
+        await cancelOrder(order, "kedaluwarsa", { executor: tx, allowed: (current) => current.status === "menunggu pembayaran" });
+      } else if (status === "refunded") {
+        // recorded, not reversed: staff decide what happens to the stock
+        await updateOrder(order, { paymentStatus: "refund" }, tx);
+      }
+    }
+
+    return updated;
+  });
+}
+
+/**
+ * Asks DOKU for its own record of one payment and folds it in exactly as the webhook
+ * would: for a webhook that is late, lost, or (in development, where DOKU can't reach
+ * localhost) never coming. Read-only against DOKU.
+ *
+ * @throws Error on a DOKU-side failure; the payment stays as it was
+ */
+export async function reconcilePayment(payment: Pick<Payment, "invoiceNumber">, client = DokuClient.fromConfig()): Promise<Payment | null> {
+  return applyDokuNotification(await client.checkStatus(payment.invoiceNumber));
+}
+
+/** The order's latest payment attempt still waiting for DOKU. */
+export async function latestPendingPayment(orderId: number): Promise<Payment | null> {
+  const [payment] = await db
+    .select()
+    .from(payments)
+    .where(and(eq(payments.orderId, orderId), eq(payments.status, "pending")))
+    .orderBy(desc(payments.id))
+    .limit(1);
+
+  return payment ?? null;
 }

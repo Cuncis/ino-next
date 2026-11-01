@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { branchStocks, categories, db, inventoryBatches, productImages, products } from "@/db";
 import { CATEGORY_STATUSES, DRUG_CLASSES, STORAGE_CONDITIONS, stockLabel, toLabel } from "@/lib/admin-options";
 import { displayUrl } from "@/lib/storage";
+import { SHORT_MONTHS } from "@/lib/dates";
 
 /**
  * The catalogue as the storefront needs it, shared with every storefront page because
@@ -24,9 +25,6 @@ export function purchaseLimit(maxQtyPerOrder: number | null): number {
 export const PRODUCT_PLACEHOLDER_IMAGE = "/media/images/product/p-1.png";
 
 const CATEGORY_PLACEHOLDER_IMAGE = "/media/images/small/img-1.jpg";
-
-/** Carbon's Indonesian short month names (it writes "Agt", where Intl writes "Agu"). */
-const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
 
 /** `2026-08-05` → `05 Agt 2026`, Carbon's translatedFormat('d M Y') in Indonesian. */
 export function shortIndonesianDate(isoDate: string): string {

@@ -32,3 +32,21 @@ describe("DOKU signature", () => {
     expect(dokuVerify({ ...headers, signature: undefined }, body, "/checkout/v1/payment", "BRN-0001", "secret-key")).toBe(false);
   });
 });
+
+describe("mapDokuStatus", () => {
+  it("maps DOKU's statuses to payments.status and ignores anything else", async () => {
+    const { mapDokuStatus } = await import("./doku-payment");
+
+    expect(["SUCCESS", "FAILED", "TIMEOUT", "EXPIRED", "REFUNDED", "PENDING", "REDIRECT", "success", null].map(mapDokuStatus)).toEqual([
+      "success",
+      "failed",
+      "failed",
+      "expired",
+      "refunded",
+      "pending",
+      "pending",
+      null,
+      null,
+    ]);
+  });
+});

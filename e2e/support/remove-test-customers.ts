@@ -1,9 +1,9 @@
 import { and, eq, inArray, like, sql } from "drizzle-orm";
-import { branchStocks, cartItems, carts, customerAddresses, customers, db, inventoryBatches, inventoryMovements, orderItems, orders, payments, shipments } from "../../src/db";
+import { branchStocks, cartItems, carts, coupons, customerAddresses, customers, db, inventoryBatches, inventoryMovements, orderItems, orders, payments, shipments } from "../../src/db";
 
 /**
- * Removes test accounts and everything their orders did: stock goes back into the very
- * batches it was taken from, and the orders, their stock movements, payments, shipments,
+ * Removes test accounts and everything their orders did: stock still held by an order goes
+ * back into the very batches it was taken from, and the orders, their stock movements, payments, shipments,
  * the cart and the addresses are deleted.
  */
 export async function removeTestCustomers(emailPattern: string): Promise<void> {
@@ -19,8 +19,10 @@ export async function removeTestCustomers(emailPattern: string): Promise<void> {
 
     for (const order of placed) {
       const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      // a cancelled or expired order already gave its stock back
+      const returned = order.status === "dibatalkan" || order.status === "kedaluwarsa";
 
-      for (const item of items) {
+      for (const item of returned ? [] : items) {
         const manifest = (item.batchesConsumed ?? []) as { batch_id: number; quantity: number }[];
         const taken = manifest.reduce((sum, entry) => sum + entry.quantity, 0);
 
@@ -37,6 +39,14 @@ export async function removeTestCustomers(emailPattern: string): Promise<void> {
             .set({ quantity: sql`${branchStocks.quantity} + ${taken}` })
             .where(and(eq(branchStocks.branchId, order.branchId), eq(branchStocks.productId, item.productId)));
         }
+      }
+
+      // a coupon use that an order still counts is given back
+      if (order.couponId && !returned) {
+        await tx
+          .update(coupons)
+          .set({ usedCount: sql`${coupons.usedCount} - 1` })
+          .where(eq(coupons.id, order.couponId));
       }
 
       await tx.delete(inventoryMovements).where(and(like(inventoryMovements.referenceType, "%Order"), eq(inventoryMovements.referenceId, order.id)));

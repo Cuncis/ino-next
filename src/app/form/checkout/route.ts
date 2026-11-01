@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { customers, db } from "@/db";
-import { nextCode } from "@/lib/code-sequence";
-import { csrfMismatchResponse, isSameOrigin, jsonBody, redirectTo, wantsJson } from "@/lib/http";
+import { insertWithNextCode, nextCode } from "@/lib/code-sequence";
+import { csrfMismatchResponse, externalRedirect, isSameOrigin, jsonBody, redirectTo } from "@/lib/http";
 import { throttle } from "@/lib/rate-limit";
 import { addError, prepareInput, validate, validationErrorResponse, validationExceptionResponse, ValidationException, type Rules } from "@/lib/validation";
 import { createPaymentForOrder } from "@/server/payments/doku-payment";
@@ -207,8 +207,8 @@ async function checkout(request: Request): Promise<Response> {
     });
   }
 
-  // Inertia::location(): the browser leaves for DOKU's payment page
-  return wantsJson(request) ? Response.json({ location: checkoutUrl }, { status: 409 }) : Response.redirect(checkoutUrl ?? "/", 303);
+  // the browser leaves for DOKU's payment page
+  return externalRedirect(request, checkoutUrl ?? `/pesanan/${order.number}`);
 }
 
 /**
@@ -218,21 +218,26 @@ async function checkout(request: Request): Promise<Response> {
  */
 async function registerGuest(guestCart: CartManager, input: CheckoutInput): Promise<Customer> {
   const now = new Date();
-  const [customer] = await db
-    .insert(customers)
-    .values({
-      code: await nextCode({ table: customers, column: customers.code, prefix: "CUS-" }),
-      name: input.name!,
-      phone: input.phone,
-      email: input.email!,
-      password: await hashPassword(randomBytes(30).toString("base64url").slice(0, 40)),
-      status: "aktif",
-      consentAt: now,
-      consentVersion: CONSENT_VERSION,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning();
+  const password = await hashPassword(randomBytes(30).toString("base64url").slice(0, 40));
+  const [customer] = await insertWithNextCode(
+    async () =>
+      db
+        .insert(customers)
+        .values({
+          code: await nextCode({ table: customers, column: customers.code, prefix: "CUS-" }),
+          name: input.name!,
+          phone: input.phone,
+          email: input.email!,
+          password,
+          status: "aktif",
+          consentAt: now,
+          consentVersion: CONSENT_VERSION,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+    "customers_code_unique",
+  );
 
   await loginCustomer(customer);
   await guestCart.mergeGuestIntoCustomer(customer);

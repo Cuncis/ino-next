@@ -10,7 +10,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
  * the Secret Key, base64 it, prefix `HMACSHA256=`. A notification is verified by
  * recomputing it from what DOKU sent and comparing in constant time.
  */
-export function dokuDigest(rawBody: string): string {
+export function dokuDigest(rawBody: string | Uint8Array): string {
   return createHash("sha256").update(rawBody).digest("base64");
 }
 
@@ -29,7 +29,7 @@ export function dokuSign(clientId: string, requestId: string, timestamp: string,
  */
 export function dokuVerify(
   headers: Record<string, string | null | undefined>,
-  rawBody: string,
+  rawBody: string | Uint8Array,
   requestTarget: string,
   expectedClientId: string,
   secretKey: string,

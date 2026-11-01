@@ -29,6 +29,8 @@ export type SessionData = {
   /** The account's remember_token when the session started; only for "remember me". */
   rememberToken: string | null;
   createdAt: number;
+  /** Anything else a guard keeps in its session (a staff session's activity and language). */
+  meta?: Record<string, unknown>;
 };
 
 function sessionKey(guard: Guard, token: string): string {
@@ -81,6 +83,11 @@ export async function readSession(guard: Guard, token: string | undefined): Prom
   await redis.expire(key, lifetimeSeconds(data));
 
   return data;
+}
+
+/** Saves changed session data under the same token, for another lifetime. */
+export async function writeSession(guard: Guard, token: string, data: SessionData): Promise<void> {
+  await redis.set(sessionKey(guard, token), JSON.stringify(data), "EX", lifetimeSeconds(data));
 }
 
 export async function destroySession(guard: Guard, token: string | undefined): Promise<void> {

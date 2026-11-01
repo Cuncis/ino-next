@@ -1,0 +1,386 @@
+/*
+ * The admin panel's stylesheet: Filament 4.16's own CSS (MIT, copied into
+ * src/styles/filament so the panel looks exactly like the Laravel app's), then that
+ * app's theme (resources/css/filament/admin/theme.css), then the colour and font
+ * variables Filament writes into every page's <head>.
+ */
+@import "../../styles/filament/filament/resources/css/theme.css";
+
+@source "../../components/admin";
+@source "../../views/admin";
+@source "./";
+
+/* Filament's colour palette for this panel (primary #303030, info #005bd3) */
+:root { --danger-50:oklch(0.971 0.013 17.38); --danger-100:oklch(0.936 0.032 17.717); --danger-200:oklch(0.885 0.062 18.334); --danger-300:oklch(0.808 0.114 19.571); --danger-400:oklch(0.704 0.191 22.216); --danger-500:oklch(0.637 0.237 25.331); --danger-600:oklch(0.577 0.245 27.325); --danger-700:oklch(0.505 0.213 27.518); --danger-800:oklch(0.444 0.177 26.899); --danger-900:oklch(0.396 0.141 25.723); --danger-950:oklch(0.258 0.092 26.042); --gray-50:oklch(0.985 0 0); --gray-100:oklch(0.967 0.001 286.375); --gray-200:oklch(0.92 0.004 286.32); --gray-300:oklch(0.871 0.006 286.286); --gray-400:oklch(0.705 0.015 286.067); --gray-500:oklch(0.552 0.016 285.938); --gray-600:oklch(0.442 0.017 285.786); --gray-700:oklch(0.37 0.013 285.805); --gray-800:oklch(0.274 0.006 286.033); --gray-900:oklch(0.21 0.006 285.885); --gray-950:oklch(0.141 0.005 285.823); --info-50:oklch(0.97717647058824 0.01395454545455 259.385); --info-100:oklch(0.95035294117647 0.03272727272727 259.385); --info-200:oklch(0.90547058823529 0.06318181818182 259.385); --info-300:oklch(0.84047058823529 0.10604545454546 259.385); --info-400:oklch(0.75352941176471 0.15027272727273 259.385); --info-500:oklch(0.68270588235294 0.17009090909091 259.385); --info-600:oklch(0.59782352941176 0.16913636363636 259.385); --info-700:oklch(0.51494117647059 0.14940909090909 259.385); --info-800:oklch(0.44611764705882 0.12331818181818 259.385); --info-900:oklch(0.39458823529412 0.09963636363636 259.385); --info-950:oklch(0.27788235294118 0.07136363636364 259.385); --primary-50:oklch(0.97717647058824 0 89.876); --primary-100:oklch(0.95035294117647 0 89.876); --primary-200:oklch(0.90547058823529 0 89.876); --primary-300:oklch(0.84047058823529 0 89.876); --primary-400:oklch(0.75352941176471 0 89.876); --primary-500:oklch(0.68270588235294 0 89.876); --primary-600:oklch(0.59782352941176 0 89.876); --primary-700:oklch(0.51494117647059 0 89.876); --primary-800:oklch(0.44611764705882 0 89.876); --primary-900:oklch(0.39458823529412 0 89.876); --primary-950:oklch(0.27788235294118 0 89.876); --success-50:oklch(0.982 0.018 155.826); --success-100:oklch(0.962 0.044 156.743); --success-200:oklch(0.925 0.084 155.995); --success-300:oklch(0.871 0.15 154.449); --success-400:oklch(0.792 0.209 151.711); --success-500:oklch(0.723 0.219 149.579); --success-600:oklch(0.627 0.194 149.214); --success-700:oklch(0.527 0.154 150.069); --success-800:oklch(0.448 0.119 151.328); --success-900:oklch(0.393 0.095 152.535); --success-950:oklch(0.266 0.065 152.934); --warning-50:oklch(0.987 0.022 95.277); --warning-100:oklch(0.962 0.059 95.617); --warning-200:oklch(0.924 0.12 95.746); --warning-300:oklch(0.879 0.169 91.605); --warning-400:oklch(0.828 0.189 84.429); --warning-500:oklch(0.769 0.188 70.08); --warning-600:oklch(0.666 0.179 58.318); --warning-700:oklch(0.555 0.163 48.998); --warning-800:oklch(0.473 0.137 46.201); --warning-900:oklch(0.414 0.112 45.904); --warning-950:oklch(0.279 0.077 45.635); }
+
+:root {
+    --font-family: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+    --mono-font-family: ui-monospace;
+    --serif-font-family: ui-serif;
+    --sidebar-width: 20rem;
+    --collapsed-sidebar-width: 4.5rem;
+    --default-theme-mode: light;
+}
+
+/* ---- The Laravel app's theme (resources/css/filament/admin/theme.css) ---- */
+
+
+/*
+ * Shopify-admin look: black top bar, flat light-grey canvas and sidebar,
+ * white rounded cards, Inter type, blue text links. These are plain
+ * (unlayered) rules on purpose, so they win over Filament's own component
+ * layer without needing !important.
+ */
+:root {
+    --shop-canvas: #f1f1f1;
+    --shop-surface: #ffffff;
+    --shop-topbar: #1a1a1a;
+    --shop-text: #303030;
+    --shop-subdued: #616161;
+    --shop-border: #e3e3e3;
+    --shop-link: #005bd3;
+    --shop-card-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 0 rgb(26 26 26 / 0.07);
+}
+
+.fi-body {
+    background-color: var(--shop-canvas);
+    color: var(--shop-text);
+    font-size: 0.8125rem;
+    letter-spacing: -0.005em;
+}
+
+/* Top bar: full-width black strip. */
+.fi-topbar {
+    background-color: var(--shop-topbar);
+    color: #fff;
+    --tw-ring-color: transparent;
+    box-shadow: none;
+    min-height: 3.5rem;
+}
+
+.fi-body {
+    --topbar-height: 3.5rem;
+}
+
+.fi-topbar .fi-icon:not(.fi-dropdown-panel *),
+.fi-topbar .fi-icon-btn:not(.fi-dropdown-panel *),
+.fi-topbar button:not(.fi-dropdown-panel *) {
+    color: rgb(255 255 255 / 0.8);
+}
+
+.fi-topbar .fi-icon-btn:not(.fi-dropdown-panel *):hover,
+.fi-topbar button:not(.fi-dropdown-panel *):hover {
+    background-color: rgb(255 255 255 / 0.12);
+}
+
+.fi-topbar .fi-logo,
+.fi-topbar .fi-user-menu-trigger,
+.fi-topbar [class*='brand'] {
+    color: #fff;
+}
+
+/*
+ * The account and notification menus are children of the black top bar, so
+ * they would otherwise inherit its white text onto their own white panel.
+ */
+.fi-topbar .fi-dropdown-panel {
+    color: var(--shop-text);
+}
+
+.fi-topbar input {
+    background-color: rgb(255 255 255 / 0.16);
+    color: #fff;
+    border-radius: 0.5rem;
+}
+
+.fi-topbar input::placeholder {
+    color: rgb(255 255 255 / 0.7);
+}
+
+/* Sidebar: same grey as the canvas, no divider, pill-shaped items. */
+.fi-sidebar {
+    background-color: var(--shop-canvas);
+}
+
+.fi-sidebar-nav {
+    padding: 0.75rem 0.75rem 1.5rem;
+    gap: 1rem;
+}
+
+.fi-sidebar-group-label {
+    color: var(--shop-subdued);
+    font-size: 0.75rem;
+    font-weight: 550;
+}
+
+.fi-sidebar-item-btn {
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.5rem;
+}
+
+.fi-sidebar-item-label {
+    color: var(--shop-text);
+    font-size: 0.8125rem;
+    font-weight: 550;
+}
+
+.fi-sidebar-item-btn > .fi-icon {
+    color: #4a4a4a;
+}
+
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn,
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn:hover {
+    background-color: var(--shop-surface);
+    box-shadow: 0 1px 0 rgb(26 26 26 / 0.07);
+}
+
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon,
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label {
+    color: var(--shop-text);
+}
+
+/* Sub-items slide open and fade in one after another when their parent opens,
+   like Shopify's sidebar. They are rendered only for the active parent, so the
+   animation plays each time the page lands on a parent or one of its children. */
+.fi-sidebar-item-btn {
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.fi-sidebar-sub-group-items {
+    overflow: hidden;
+    animation: shop-sidebar-open 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.fi-sidebar-sub-group-items > li {
+    animation: shop-sidebar-item 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.fi-sidebar-sub-group-items > li:nth-child(2) { animation-delay: 30ms; }
+.fi-sidebar-sub-group-items > li:nth-child(3) { animation-delay: 60ms; }
+.fi-sidebar-sub-group-items > li:nth-child(4) { animation-delay: 90ms; }
+.fi-sidebar-sub-group-items > li:nth-child(5) { animation-delay: 120ms; }
+.fi-sidebar-sub-group-items > li:nth-child(n + 6) { animation-delay: 150ms; }
+
+@keyframes shop-sidebar-open {
+    from { max-height: 0; opacity: 0; }
+    to { max-height: 24rem; opacity: 1; }
+}
+
+@keyframes shop-sidebar-item {
+    from { opacity: 0; transform: translateY(-0.375rem); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* A parent that was already open before the click (moving between its own
+   children) stays put instead of replaying the animation. */
+@media (prefers-reduced-motion: reduce) {
+    .fi-sidebar-sub-group-items,
+    .fi-sidebar-sub-group-items > li {
+        animation: none;
+    }
+}
+
+.fi-sidebar-sub-group-items[data-static],
+.fi-sidebar-sub-group-items[data-static] > li {
+    animation: none;
+}
+
+.fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:hover {
+    background-color: rgb(0 0 0 / 0.05);
+}
+
+/* Page heading. */
+.fi-header-heading {
+    color: var(--shop-text);
+    font-size: 1.25rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+.fi-header-subheading {
+    color: var(--shop-subdued);
+    font-size: 0.8125rem;
+}
+
+/* Cards: sections, tables, widgets, and the custom pages' panels. */
+.fi-section,
+.fi-ta-ctn,
+.fi-wi-stats-overview-stat,
+.fi-wi-chart,
+.fi-in-ctn {
+    background-color: var(--shop-surface);
+    border-radius: 0.75rem;
+    box-shadow: var(--shop-card-shadow);
+    --tw-ring-color: transparent;
+}
+
+.fi-section-header-heading,
+.fi-ta-header-heading {
+    color: var(--shop-text);
+    font-size: 0.875rem;
+    font-weight: 650;
+}
+
+.fi-ta-header-cell,
+.fi-ta-header-cell-label {
+    color: var(--shop-subdued);
+    font-size: 0.75rem;
+    font-weight: 550;
+}
+
+.fi-ta-header-cell {
+    background-color: #f7f7f7;
+}
+
+.fi-ta-text-item,
+.fi-ta-cell {
+    font-size: 0.8125rem;
+}
+
+/* Buttons and inputs: 8px radius, dark primary, flat borders. */
+.fi-btn,
+.fi-input-wrp,
+.fi-dropdown-panel {
+    border-radius: 0.5rem;
+}
+
+.fi-input-wrp {
+    background-color: var(--shop-surface);
+    box-shadow: 0 0 0 1px #8a8a8a;
+    --tw-ring-color: transparent;
+}
+
+.fi-input-wrp:focus-within {
+    box-shadow: 0 0 0 2px var(--shop-link);
+}
+
+.fi-btn.fi-color-primary:not(.fi-outlined):not(.fi-btn-color-gray) {
+    background-color: #303030;
+    color: #fff;
+}
+
+.fi-btn.fi-color-primary:not(.fi-outlined):hover {
+    background-color: #1a1a1a;
+}
+
+/* Filament gives the icon of a solid primary button a dark shade meant for its own
+   (light) primary colour; on our near-black button that made the icon vanish. */
+.fi-btn.fi-color-primary:not(.fi-outlined) .fi-icon {
+    color: #fff;
+}
+
+/* Text links read as Shopify blue. */
+.fi-link:not(.fi-btn),
+.fi-ta-text-item a,
+.fi-breadcrumbs-item-label {
+    color: var(--shop-link);
+}
+
+/*
+ * Native date/time inputs: the browser's calendar button sits inside the
+ * field, so a narrow filter column squeezed the text under it. Give the
+ * text room and keep the button from shrinking or touching it.
+ */
+/* The wrapper (not the input) carries the minimum width, so the input can
+   never be wider than the box that draws its border. */
+.fi-fo-date-time-picker.fi-input-wrp {
+    min-width: 12rem;
+}
+
+input[type='date'].fi-input,
+input[type='datetime-local'].fi-input,
+input[type='time'].fi-input {
+    min-width: 0;
+    width: 100%;
+    padding-inline-end: 0.5rem;
+}
+
+input[type='date'].fi-input::-webkit-calendar-picker-indicator,
+input[type='datetime-local'].fi-input::-webkit-calendar-picker-indicator,
+input[type='time'].fi-input::-webkit-calendar-picker-indicator {
+    flex-shrink: 0;
+    margin-inline-start: 0.5rem;
+    cursor: pointer;
+}
+
+input[type='date'].fi-input::-webkit-datetime-edit,
+input[type='datetime-local'].fi-input::-webkit-datetime-edit,
+input[type='time'].fi-input::-webkit-datetime-edit {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+}
+
+/* The top-bar search sits on black: keep its text and placeholder readable. */
+.fi-topbar .fi-input-wrp {
+    background-color: rgb(255 255 255 / 0.16);
+    box-shadow: none;
+}
+
+.fi-topbar .fi-input-wrp:focus-within {
+    background-color: rgb(255 255 255 / 0.24);
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 0.5);
+}
+
+.fi-topbar .fi-input-wrp input {
+    background-color: transparent;
+    color: #fff;
+}
+
+/*
+ * A table filter that holds several fields (the Dari/Sampai date range) gets
+ * one narrow column of the filter grid. Let its fields wrap onto their own
+ * rows instead of being squeezed side by side.
+ */
+.fi-ta-filters .fi-sc.fi-grid .fi-sc.fi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+/*
+ * Language switch in the profile menu: the two flag buttons share one row,
+ * everything else in that list (sign out) keeps its full-width row. The text
+ * label stays in the DOM for screen readers.
+ */
+.fi-dropdown-list:has(> form > [data-lang]) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.fi-dropdown-list:has(> form > [data-lang]) > * {
+    flex: 1 1 100%;
+}
+
+.fi-dropdown-list:has(> form > [data-lang]) > form:has([data-lang]) {
+    flex: 1 1 calc(50% - 0.125rem);
+}
+
+[data-lang] {
+    width: 100%;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+}
+
+/* Let the flag keep its own proportions instead of Filament's square icon box. */
+[data-lang] .fi-icon {
+    width: auto;
+    height: auto;
+    flex: none;
+}
+
+[data-lang] .fi-dropdown-list-item-label {
+    flex: none;
+    font-weight: 600;
+}
+
+/* Active language: the same quiet highlight the theme switcher uses, no border. */
+[data-lang][data-active] {
+    background-color: var(--gray-100, rgb(0 0 0 / 0.06));
+}
+
+/* File upload: underline only the "Browse" link, not the rest of the drop label. */
+.fi-fo-file-upload .filepond--label-action {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}

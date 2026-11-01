@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { FLASH_COOKIE, FLASH_HEADER } from "@/lib/flash";
-import { destroySession, SESSION_COOKIES, sessionCookieOptions } from "@/lib/session";
+import { destroySession, readSession, SESSION_COOKIES, sessionCookieOptions } from "@/lib/session";
+import { ADMIN_INTENDED_COOKIE, checkStaffSession, PENDING_2FA_COOKIE, pendingTwoFactorUserId, STAFF_COOKIE } from "@/server/admin/staff-auth";
 import { branchPageExists } from "@/server/shop/branches";
 import { CartManager, exceedsPurchaseLimit, GUEST_CART_COOKIE, guestCartCookieOptions, OVER_LIMIT_MESSAGE } from "@/server/shop/cart";
 import { customerForSessionToken } from "@/server/shop/customer-auth";
@@ -20,6 +21,8 @@ import { findCustomerOrder } from "@/server/shop/orders";
  *   for an order that isn't the customer's, answer 404 before the page streams.
  * - The cart and checkout send an empty (or over-limit) cart away before anything renders,
  *   as their Laravel controllers did; a redirect from a streaming page would paint it first.
+ * - The admin: every POST goes to its handler under /form/admin; panel pages need a signed-in
+ *   staff member (see adminRedirect()).
  * - A flash message from the previous request is handed to this page, then forgotten.
  * - The shopper's sign-in, guest cart and saved location are renewed, like Laravel's session lifetime.
  */
@@ -38,8 +41,16 @@ const CUSTOMER_COOKIE = SESSION_COOKIES.customer;
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  if (request.method !== "GET" && request.method !== "HEAD" && FORM_PATHS.has(pathname)) {
+  if (request.method !== "GET" && request.method !== "HEAD" && (FORM_PATHS.has(pathname) || pathname === "/admin" || pathname.startsWith("/admin/"))) {
     return NextResponse.rewrite(new URL(`/form${pathname}${search}`, request.url));
+  }
+
+  if (request.method === "GET" && (pathname === "/admin" || pathname.startsWith("/admin/"))) {
+    const away = await adminRedirect(request, pathname, search);
+
+    if (away) {
+      return away;
+    }
   }
 
   const apotek = /^\/apotek\/([^/]+)\/?$/.exec(pathname);
@@ -109,6 +120,12 @@ export async function proxy(request: NextRequest) {
       response.cookies.set(CUSTOMER_COOKIE, sessionToken, sessionCookieOptions(sessionToken));
     }
 
+    const staffToken = request.cookies.get(STAFF_COOKIE)?.value;
+
+    if (staffToken) {
+      response.cookies.set(STAFF_COOKIE, staffToken, sessionCookieOptions(staffToken));
+    }
+
     const guestCart = request.cookies.get(GUEST_CART_COOKIE)?.value;
 
     if (guestCart) {
@@ -120,6 +137,54 @@ export async function proxy(request: NextRequest) {
     if (location) {
       response.cookies.set(LOCATION_COOKIE, location.value, locationCookieOptions);
     }
+  }
+
+  return response;
+}
+
+/** The staff sign-in screens, outside the `admin` middleware. */
+function isAdminAuthPage(pathname: string): boolean {
+  return ["/admin/masuk", "/admin/lupa-sandi", "/admin/dua-faktor"].includes(pathname) || pathname.startsWith("/admin/atur-ulang-sandi/");
+}
+
+/**
+ * The admin's redirects before anything renders: a signed-in staff member skips the
+ * sign-in page; the 2FA step needs a password accepted first; and every panel page is
+ * behind EnsureAdminIsAuthenticated (active account, 12-hour session, 30 minutes idle).
+ */
+async function adminRedirect(request: NextRequest, pathname: string, search: string): Promise<NextResponse | null> {
+  const token = request.cookies.get(STAFF_COOKIE)?.value;
+  // 302, like Laravel's redirect()
+  const toSignIn = () => NextResponse.redirect(new URL("/admin/masuk", request.url), 302);
+
+  if (pathname === "/admin/masuk") {
+    // AdminAuthController::show(): only "is anyone signed in", no session rules
+    const session = await readSession("staff", token);
+
+    return session ? NextResponse.redirect(new URL("/admin", request.url), 302) : null;
+  }
+
+  if (pathname === "/admin/dua-faktor") {
+    return (await pendingTwoFactorUserId(request.cookies.get(PENDING_2FA_COOKIE)?.value)) ? null : toSignIn();
+  }
+
+  if (isAdminAuthPage(pathname)) {
+    return null;
+  }
+
+  const check = await checkStaffSession(token);
+
+  if ("staff" in check) {
+    return null;
+  }
+
+  const response = toSignIn();
+
+  if (check.failure === "guest") {
+    response.cookies.set(ADMIN_INTENDED_COOKIE, `${pathname}${search}`, { httpOnly: true, sameSite: "lax", path: "/" });
+  } else {
+    response.cookies.delete(STAFF_COOKIE);
+    response.cookies.set(FLASH_COOKIE, JSON.stringify({ error: check.message }), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 });
   }
 
   return response;

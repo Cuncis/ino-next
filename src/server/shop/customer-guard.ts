@@ -1,5 +1,5 @@
 import { flashForNextPage } from "@/lib/flash";
-import { csrfMismatchResponse, isSameOrigin, wantsJson } from "@/lib/http";
+import { csrfMismatchResponse, isSameOrigin, redirectResponse, wantsJson } from "@/lib/http";
 import { currentCustomer, logoutCustomer, type Customer } from "./customer-auth";
 
 /**
@@ -34,5 +34,5 @@ export async function customerForAction(request: Request): Promise<{ customer: C
     await flashForNextPage(flash);
   }
 
-  return { response: Response.redirect(new URL("/signin", request.url), 303) };
+  return { response: redirectResponse("/signin", 303) };
 }

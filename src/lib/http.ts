@@ -67,7 +67,7 @@ export async function redirectTo(request: Request, url: string, flash?: Flash): 
     await flashForNextPage(flash);
   }
 
-  return Response.redirect(new URL(url, request.url), 303);
+  return redirectResponse(url, 303);
 }
 
 /** Laravel's `back()`: the page the request came from. */
@@ -92,5 +92,14 @@ export function previousUrl(request: Request, fallback = "/"): string {
  * client gets a 409 naming the URL and does a full page visit; a plain form gets a redirect.
  */
 export function externalRedirect(request: Request, url: string): Response {
-  return wantsJson(request) ? Response.json({ location: url }, { status: 409 }) : Response.redirect(new URL(url, request.url), 303);
+  return wantsJson(request) ? Response.json({ location: url }, { status: 409 }) : redirectResponse(url, 303);
+}
+
+/**
+ * A redirect with the Location as given: a path stays relative, so the browser resolves it
+ * against the address it used. (`request.url` in a Route Handler carries the address the
+ * server listens on, e.g. 0.0.0.0 in development, where the session cookie isn't sent.)
+ */
+export function redirectResponse(location: string, status: 301 | 302 | 303 = 302): Response {
+  return new Response(null, { status, headers: { Location: location } });
 }

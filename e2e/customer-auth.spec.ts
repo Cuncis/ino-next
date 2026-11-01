@@ -69,8 +69,9 @@ test("a customer signs up, verifies their phone, signs out and back in, and dele
   await page.locator('form button[type="submit"]:visible').click();
   await expect(page).toHaveURL(/\/verify-phone$/);
 
-  // phone OTP: outside production the code is shown in the flash banner
-  await page.locator('form button[type="submit"]:visible').click();
+  // phone OTP: outside production the code is shown in the flash banner. Named, because
+  // right after the URL changes the header search and footer sign-up forms are visible too.
+  await page.getByRole("button", { name: "Konfirmasi" }).click();
   await expect(page).toHaveURL(/\/otp-code$/);
   const banner = await page.getByText(/tanpa SMS gateway: \d{6}/).textContent();
   const code = /(\d{6})/.exec(banner ?? "")![1];

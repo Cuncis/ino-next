@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db, orders, shipments } from "@/db";
 import { iso8601 } from "@/lib/dates";
+import { transaction } from "@/lib/queue";
 import { updateOrder } from "@/server/orders/order-updates";
 
 /**
@@ -45,7 +46,7 @@ export async function applyShipmentStatus(
   trackingId: string | null,
   raw: unknown,
 ): Promise<Shipment> {
-  return db.transaction(async (tx) => {
+  return transaction(db, async (tx) => {
     const [locked] = await tx.select().from(shipments).where(eq(shipments.id, shipment.id)).limit(1).for("update");
 
     if (status === null) {

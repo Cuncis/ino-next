@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq } from "drizzle-orm";
 import { customers, db, orderItems, orders, payments } from "@/db";
 import { normalizePhone } from "@/lib/phone";
+import { transaction } from "@/lib/queue";
 import { cancelOrder } from "@/server/orders/order-cancellation";
 import { updateOrder } from "@/server/orders/order-updates";
 import { DokuClient } from "./doku-client";
@@ -181,7 +182,7 @@ export async function applyDokuNotification(payload: unknown): Promise<Payment |
     return null;
   }
 
-  return db.transaction(async (tx) => {
+  return transaction(db, async (tx) => {
     const [locked] = await tx.select().from(payments).where(eq(payments.id, payment.id)).limit(1).for("update");
     const alreadyApplied = locked.status === status;
     const now = new Date();

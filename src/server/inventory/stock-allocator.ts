@@ -1,5 +1,7 @@
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { branchStocks, db, inventoryBatches, inventoryMovements, type DbExecutor } from "@/db";
+import { transaction } from "@/lib/queue";
+import { activeBranchStaff, notifyStaff } from "@/server/notifications/staff";
 
 /**
  * Takes stock out of a branch, batch by batch. Ported from
@@ -42,7 +44,7 @@ export async function consumeStock(options: {
 }): Promise<BatchManifest> {
   const { branch, product, quantity, type, reference, userId = null, note = null, executor = db } = options;
 
-  return executor.transaction(async (tx) => {
+  return transaction(executor, async (tx) => {
     const [stock] = await tx
       .select()
       .from(branchStocks)
@@ -108,10 +110,13 @@ export async function consumeStock(options: {
       });
     }
 
-    await tx
+    const [after] = await tx
       .update(branchStocks)
       .set({ quantity: sql`${branchStocks.quantity} - ${quantity}`, updatedAt: now })
-      .where(eq(branchStocks.id, stock.id));
+      .where(eq(branchStocks.id, stock.id))
+      .returning();
+
+    await warnIfNewlyLow(stock, after, tx);
 
     return manifest;
   });
@@ -133,7 +138,7 @@ export async function receiveStock(options: {
 }): Promise<void> {
   const { branchId, productId, manifest, type, reference, userId = null, note = null, executor = db } = options;
 
-  await executor.transaction(async (tx) => {
+  await transaction(executor, async (tx) => {
     const now = new Date();
     const where = and(eq(branchStocks.branchId, branchId), eq(branchStocks.productId, productId));
     let [stock] = await tx.select().from(branchStocks).where(where).limit(1).for("update");
@@ -200,11 +205,37 @@ export async function receiveStock(options: {
       });
     }
 
-    await tx
+    const [after] = await tx
       .update(branchStocks)
       .set({ quantity: sql`${branchStocks.quantity} + ${total}`, updatedAt: now })
-      .where(eq(branchStocks.id, stock.id));
+      .where(eq(branchStocks.id, stock.id))
+      .returning();
+
+    await warnIfNewlyLow(stock, after, tx);
   });
+}
+
+type BranchStock = typeof branchStocks.$inferSelect;
+
+const available = (stock: BranchStock) => Math.max(stock.quantity - stock.reservedQuantity, 0);
+
+/**
+ * App\Observers\BranchStockObserver: the branch's staff hear once, when a product with a
+ * reorder point first drops to it, not on every sale after that.
+ */
+async function warnIfNewlyLow(before: BranchStock, after: BranchStock, executor: DbExecutor): Promise<void> {
+  if (after.reorderPoint <= 0 || (after.quantity === before.quantity && after.reservedQuantity === before.reservedQuantity)) {
+    return;
+  }
+
+  const wasLow = available(before) <= after.reorderPoint;
+  const isLow = available(after) <= after.reorderPoint;
+
+  if (wasLow || !isLow) {
+    return;
+  }
+
+  await notifyStaff(await activeBranchStaff(after.branchId, executor), "LowStock", after.id);
 }
 
 /** `received_at` is a date: today in Jakarta. */

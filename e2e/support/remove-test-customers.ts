@@ -1,10 +1,10 @@
 import { and, eq, inArray, like, sql } from "drizzle-orm";
-import { branchStocks, cartItems, carts, coupons, customerAddresses, customers, db, inventoryBatches, inventoryMovements, orderItems, orders, payments, shipments } from "../../src/db";
+import { auditLogs, branchStocks, cartItems, carts, coupons, customerAddresses, customers, db, inventoryBatches, inventoryMovements, notifications, orderItems, orders, payments, shipments } from "../../src/db";
 
 /**
  * Removes test accounts and everything their orders did: stock still held by an order goes
- * back into the very batches it was taken from, and the orders, their stock movements, payments, shipments,
- * the cart and the addresses are deleted.
+ * back into the very batches it was taken from, and the orders, their stock movements,
+ * payments, shipments, audit rows and staff notifications, the cart and the addresses are deleted.
  */
 export async function removeTestCustomers(emailPattern: string): Promise<void> {
   const found = await db.select({ id: customers.id }).from(customers).where(like(customers.email, emailPattern));
@@ -50,6 +50,9 @@ export async function removeTestCustomers(emailPattern: string): Promise<void> {
       }
 
       await tx.delete(inventoryMovements).where(and(like(inventoryMovements.referenceType, "%Order"), eq(inventoryMovements.referenceId, order.id)));
+      await tx.delete(auditLogs).where(and(eq(auditLogs.auditableType, "App\\Models\\Order"), eq(auditLogs.auditableId, order.id)));
+      // the branch staff's "Pesanan baru" and pickup reminders for this order
+      await tx.delete(notifications).where(sql`${notifications.data}->'actions'->0->>'url' like ${`%/admin/pesanan/${order.id}`} or ${notifications.data}->>'body' like ${`#${order.number} %`}`);
       await tx.delete(payments).where(eq(payments.orderId, order.id));
       await tx.delete(shipments).where(eq(shipments.orderId, order.id));
       await tx.delete(orderItems).where(eq(orderItems.orderId, order.id));

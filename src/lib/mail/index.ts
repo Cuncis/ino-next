@@ -8,7 +8,8 @@ import nodemailer, { type Transporter } from "nodemailer";
  * placeholders), so a customer can't tell which app sent them.
  *
  * `MAIL_MAILER=log` (the Laravel app's setting in development) writes each email to the
- * server log instead of sending it; `MAIL_MAILER=smtp` sends through the SMTP_* settings.
+ * server log instead of sending it; `MAIL_MAILER=smtp` sends through the SMTP_* settings;
+ * `MAIL_MAILER=array` keeps them in `sentMail` (Laravel's array mailer, for tests).
  */
 export type NotificationMail = {
   subject: string;
@@ -47,6 +48,15 @@ function repeatLine(html: string, placeholder: string, lines: string[]): string 
   return html.slice(0, start) + lines.map((line) => element.replace(placeholder, escapeHtml(line))).join("\n") + html.slice(end);
 }
 
+/** MailMessage::formatLine(): a line written over several lines becomes one, its parts trimmed and joined by spaces. */
+function formatLine(line: string): string {
+  return line
+    .split(/\r\n|\r|\n/)
+    .map((part) => part.trim())
+    .join(" ")
+    .trim();
+}
+
 function appUrl(): string {
   return (process.env.APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 }
@@ -56,8 +66,9 @@ function currentYear(): string {
 }
 
 /** The HTML and plain-text bodies of a notification email. */
-export function renderNotification(mail: NotificationMail): { html: string; text: string } {
+export function renderNotification(message: NotificationMail): { html: string; text: string } {
   const { html, text } = loadTemplates();
+  const mail = { ...message, introLines: message.introLines.map(formatLine), outroLines: message.outroLines.map(formatLine) };
   let body = repeatLine(html, "PLACEHOLDERINTRO", mail.introLines);
 
   body = repeatLine(body, "PLACEHOLDEROUTRO", mail.outroLines)
@@ -99,15 +110,36 @@ function from(): string {
   return `"${name.replace(/"/g, "")}" <${address}>`;
 }
 
+export type SentMail = { to: string; subject: string; html: string; text?: string; headers?: Record<string, string> };
+
+/** What MAIL_MAILER=array has "sent", oldest first. */
+export const sentMail: SentMail[] = [];
+
 export async function sendNotification(to: Recipient, mail: NotificationMail): Promise<void> {
   const { html, text } = renderNotification(mail);
-  const recipient = to.name ? `"${to.name.replace(/"/g, "")}" <${to.email}>` : to.email;
 
-  if ((process.env.MAIL_MAILER ?? "log") !== "smtp") {
-    console.info(`[mail] To: ${recipient}\n[mail] Subject: ${mail.subject}\n${text}`);
+  await sendMail({ to: recipientAddress(to), subject: mail.subject, html, text });
+}
+
+function recipientAddress(to: Recipient): string {
+  return to.name ? `"${to.name.replace(/"/g, "")}" <${to.email}>` : to.email;
+}
+
+/** Sends a finished email (a newsletter brings its own HTML and headers). */
+export async function sendMail(mail: SentMail): Promise<void> {
+  const mailer = process.env.MAIL_MAILER ?? "log";
+
+  if (mailer === "array") {
+    sentMail.push(mail);
 
     return;
   }
 
-  await smtp().sendMail({ from: from(), to: recipient, subject: mail.subject, html, text });
+  if (mailer !== "smtp") {
+    console.info(`[mail] To: ${mail.to}\n[mail] Subject: ${mail.subject}\n${mail.text ?? mail.html}`);
+
+    return;
+  }
+
+  await smtp().sendMail({ from: from(), to: mail.to, subject: mail.subject, html: mail.html, text: mail.text, headers: mail.headers });
 }

@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { coupons, db, orderItems, orders, type DbExecutor } from "@/db";
 import { END_STATUSES } from "@/lib/order-status";
+import { transaction } from "@/lib/queue";
 import { ORDER_MORPH_CLASS, receiveStock, type BatchManifest } from "@/server/inventory/stock-allocator";
 import { updateOrder, type Order } from "./order-updates";
 
@@ -25,7 +26,7 @@ export async function cancelOrder(
 ): Promise<Order | null> {
   const { executor = db, allowed = () => true } = options;
 
-  return executor.transaction(async (tx) => {
+  return transaction(executor, async (tx) => {
     const [locked] = await tx.select().from(orders).where(eq(orders.id, order.id)).limit(1).for("update");
 
     if (!locked || (END_STATUSES as readonly string[]).includes(locked.status) || !allowed(locked)) {

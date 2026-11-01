@@ -1,7 +1,9 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm";
 import { branches, coupons, customerAddresses, db, orderItems, orders, shipments, type DbExecutor } from "@/db";
 import { generateOrderNumber } from "@/lib/order-number";
+import { transaction } from "@/lib/queue";
 import { ValidationException } from "@/lib/validation";
+import { orderCreated } from "@/server/orders/order-updates";
 import { consumeStock, InsufficientStockError, ORDER_MORPH_CLASS, type BatchManifest } from "@/server/inventory/stock-allocator";
 import type { CourierQuote } from "@/server/shipping/quote";
 import { provinceOptions } from "./addresses";
@@ -161,7 +163,7 @@ export async function placeOrder(options: {
 }): Promise<typeof orders.$inferSelect> {
   const { customer, data, branch, fulfilment, paymentMethod, courierQuote } = options;
 
-  return db.transaction(async (tx) => {
+  return transaction(db, async (tx) => {
     // locked, so two orders racing for a coupon's last use can't both get it
     const [coupon] = data.coupon ? await tx.select().from(coupons).where(eq(coupons.id, data.coupon.id)).limit(1).for("update") : [];
 
@@ -206,6 +208,8 @@ export async function placeOrder(options: {
         updatedAt: now,
       })
       .returning();
+
+    await orderCreated(order, tx);
 
     if (fulfilment === "antar" && courierQuote) {
       await tx.insert(shipments).values({

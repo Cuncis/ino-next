@@ -29,8 +29,11 @@ export async function updateOrder(order: Order, changes: OrderChanges, executor:
   return updated;
 }
 
-/** OrderObserver::created(): the customer's confirmation, the branch's staff, and the audit trail. */
-export async function orderCreated(order: Order, executor: DbExecutor = db): Promise<void> {
+/**
+ * OrderObserver::created(): the customer's confirmation, the branch's staff, and the audit
+ * trail, whose actor is the staff member who entered the order (none at checkout).
+ */
+export async function orderCreated(order: Order, executor: DbExecutor = db, actorId: number | null = null): Promise<void> {
   await notifyCustomer(order, "OrderConfirmed");
   await notifyStaff(await activeBranchStaff(order.branchId, executor), "NewOrderAtBranch", order.id);
   await auditLog({
@@ -38,6 +41,7 @@ export async function orderCreated(order: Order, executor: DbExecutor = db): Pro
     auditable: { type: ORDER_MODEL, id: order.id },
     newValues: { number: order.number, grand_total: order.grandTotal, fulfilment: order.fulfilment },
     branchId: order.branchId,
+    userId: actorId,
     executor,
   });
 }

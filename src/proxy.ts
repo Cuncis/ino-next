@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { FLASH_COOKIE, FLASH_HEADER } from "@/lib/flash";
 import { destroySession, readSession, SESSION_COOKIES, sessionCookieOptions } from "@/lib/session";
+import { adminPageRefusal } from "@/server/admin/page-access";
 import { ADMIN_INTENDED_COOKIE, checkStaffSession, PENDING_2FA_COOKIE, pendingTwoFactorUserId, STAFF_COOKIE } from "@/server/admin/staff-auth";
 import { branchPageExists } from "@/server/shop/branches";
 import { CartManager, exceedsPurchaseLimit, GUEST_CART_COOKIE, guestCartCookieOptions, OVER_LIMIT_MESSAGE } from "@/server/shop/cart";
@@ -175,7 +176,9 @@ async function adminRedirect(request: NextRequest, pathname: string, search: str
   const check = await checkStaffSession(token);
 
   if ("staff" in check) {
-    return null;
+    const refusal = await adminPageRefusal(pathname, check.staff);
+
+    return refusal ? new NextResponse(refusal.body, { status: refusal.status, headers: refusal.headers }) : null;
   }
 
   const response = toSignIn();

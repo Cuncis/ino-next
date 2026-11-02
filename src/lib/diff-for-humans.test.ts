@@ -17,3 +17,17 @@ describe("diffForHumans", () => {
     ]);
   });
 });
+
+describe("translateChoice", () => {
+  it("picks Laravel's plural form and fills placeholders", async () => {
+    const { translateChoice } = await import("./admin-i18n");
+    const overview = "{1} Menampilkan 1 hasil|[2,*] Menampilkan :first sampai :last dari :total hasil";
+
+    expect(translateChoice("id", overview, 1, { first: 1, last: 1, total: 1 })).toBe("Menampilkan 1 hasil");
+    expect(translateChoice("id", overview, 10, { first: 1, last: 10, total: 10 })).toBe("Menampilkan 1 sampai 10 dari 10 hasil");
+    expect(translateChoice("en", overview, 10, { first: 1, last: 10, total: 10 })).toBe("Showing 1 to 10 of 10 results");
+    expect(translateChoice("en", ":count data dipilih", 1)).toBe("1 record selected");
+    expect(translateChoice("en", ":count data dipilih", 3)).toBe("3 records selected");
+    expect(translateChoice("id", ":count data dipilih", 3)).toBe("3 data dipilih");
+  });
+});

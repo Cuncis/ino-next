@@ -12,7 +12,8 @@ import type { AdminLocale } from "@/lib/admin-i18n";
 export async function staffForAction(
   request: Request,
 ): Promise<{ staff: Staff; locale: AdminLocale; response?: never } | { staff?: never; locale?: never; response: Response }> {
-  if (!isSameOrigin(request)) {
+  // a GET changes nothing, so only the requests that do need to come from this site
+  if (request.method !== "GET" && !isSameOrigin(request)) {
     return { response: csrfMismatchResponse() };
   }
 

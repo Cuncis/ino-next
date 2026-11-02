@@ -8,7 +8,9 @@ o-ticket o-envelope o-building-storefront o-user-group o-photo o-paint-brush o-l
 o-check-circle o-exclamation-triangle o-x-circle o-information-circle m-chevron-right o-chevron-right
 o-tag o-archive-box o-document-text o-qr-code o-banknotes o-shield-check o-arrows-right-left o-truck
 o-arrow-top-right-on-square o-question-mark-circle o-receipt-refund o-building-office o-scale o-key
-o-arrow-up-tray o-shield-exclamation o-table-cells o-arrow-path""".split()
+o-arrow-up-tray o-shield-exclamation o-table-cells o-arrow-path
+c-eye c-pencil-square c-trash m-chevron-left m-ellipsis-vertical m-funnel m-trash o-check-badge
+m-arrow-uturn-left m-arrow-left-end-on-rectangle c-x-mark o-trash o-arrow-uturn-left""".split()
 icons = {}
 for name in NAMES:
     svg = open(f"{SOURCE}/{name}.svg").read()

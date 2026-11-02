@@ -76,6 +76,13 @@ test("a customer signs up, verifies their phone, signs out and back in, and dele
   const banner = await page.getByText(/tanpa SMS gateway: \d{6}/).textContent();
   const code = /(\d{6})/.exec(banner ?? "")![1];
 
+  // the digit boxes are React state: typed before hydration, they'd be reset to empty
+  await page.waitForFunction(() => {
+    const box = [...document.querySelectorAll<HTMLInputElement>('input[inputmode="numeric"]')].find((input) => input.offsetParent !== null);
+
+    return box !== undefined && Object.keys(box).some((key) => key.startsWith("__reactFiber"));
+  });
+
   for (const [index, digit] of [...code].entries()) {
     await page.locator('input[inputmode="numeric"]:visible').nth(index).fill(digit);
   }

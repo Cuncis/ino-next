@@ -1,3 +1,4 @@
+import messagesEn from "./validation-messages.en.json";
 import messages from "./validation-messages.id.json";
 
 /**
@@ -16,7 +17,14 @@ export type ValidationErrors = Record<string, string[]>;
 
 type Messages = Record<string, string | Record<string, string>>;
 
-const MESSAGES = messages as unknown as Messages & { attributes: Record<string, string> };
+const MESSAGES_ID = messages as unknown as Messages & { attributes: Record<string, string> };
+const MESSAGES_EN = { ...(messagesEn as unknown as Messages), attributes: {} } as Messages & { attributes: Record<string, string> };
+
+/**
+ * The message set in use. `validate()` runs synchronously and restores Indonesian before
+ * it returns, so one request's language never leaks into another's.
+ */
+let MESSAGES = MESSAGES_ID;
 
 /** Laravel's TrimStrings skips these. */
 const UNTRIMMED = new Set(["password", "password_confirmation", "current_password"]);
@@ -110,12 +118,29 @@ export type ValidationResult<T> = { data: T; errors: null } | { data: null; erro
 /**
  * @param messages per-rule overrides, Laravel's `['phone.regex' => '...']`
  * @param attributes display names for fields, Laravel's custom attributes
+ * @param locale Laravel's lang/id (the app's language) or lang/en (the admin in English)
  */
 export function validate<T extends Record<string, unknown>>(
   rawInput: unknown,
   rules: Rules,
   messages: Record<string, string> = {},
   attributes: Record<string, string> = {},
+  locale: "id" | "en" = "id",
+): ValidationResult<T> {
+  MESSAGES = locale === "en" ? MESSAGES_EN : MESSAGES_ID;
+
+  try {
+    return runValidation<T>(rawInput, rules, messages, attributes);
+  } finally {
+    MESSAGES = MESSAGES_ID;
+  }
+}
+
+function runValidation<T extends Record<string, unknown>>(
+  rawInput: unknown,
+  rules: Rules,
+  messages: Record<string, string>,
+  attributes: Record<string, string>,
 ): ValidationResult<T> {
   const input = (prepareInput(rawInput) ?? {}) as Record<string, unknown>;
   const errors: ValidationErrors = {};

@@ -254,7 +254,7 @@ export function UserMenu({ name, avatarUrl, locale, labels }: { name: string; av
             ))}
             <form action="/admin/logout" method="post">
               <button role="menuitem" type="submit" className="fi-dropdown-list-item">
-                <FiIcon name="m-arrow-left-on-rectangle" />
+                <FiIcon name="m-arrow-left-end-on-rectangle" />
                 <span className="fi-dropdown-list-item-label">{labels.signOut}</span>
               </button>
             </form>
@@ -290,7 +290,14 @@ export function NotificationsBell({ initialUnread, labels }: { initialUnread: nu
     const response = await fetch("/form/admin/notifikasi", { headers: { Accept: "application/json" }, credentials: "same-origin" });
 
     if (response.ok) {
-      const body = (await response.json()) as { unread: number; notifications: BellNotification[] };
+      const body = (await response.json()) as { unread: number; notifications: BellNotification[] } | { redirect: string };
+
+      // the session ended (idle, turned off, signed out elsewhere): Filament goes to sign-in
+      if ("redirect" in body) {
+        window.location.assign(body.redirect);
+
+        return;
+      }
 
       setUnread(body.unread);
       setList(body.notifications);
@@ -485,16 +492,18 @@ export function GlobalSearch({ labels }: { labels: Pick<Labels, "search" | "glob
               <p className="fi-global-search-no-results-message">{labels.noResults}</p>
             ) : (
               <ul className="fi-global-search-results">
-                {groups!.map((group) => (
+                {groups!.map((group, index) => (
                   <li key={group.label} className="fi-global-search-result-group">
-                    <div className="fi-global-search-result-group-header">
-                      <h3 className="fi-global-search-result-group-heading">{group.label}</h3>
-                    </div>
+                    <h3 id={`global-search-group-${index}`} className="fi-global-search-result-group-header">
+                      {group.label}
+                    </h3>
                     <ul className="fi-global-search-result-group-results">
-                      {group.results.map((result) => (
-                        <li key={result.url} className="fi-global-search-result fi-global-search-result-has-actions">
+                      {group.results.map((result, position) => (
+                        <li key={result.url} className="fi-global-search-result">
                           <a href={result.url} className="fi-global-search-result-link">
-                            <h4 className="fi-global-search-result-heading">{result.title}</h4>
+                            <h4 id={`global-search-group-${index}-result-${position}`} className="fi-global-search-result-heading">
+                              {result.title}
+                            </h4>
                             {result.details.length ? (
                               <dl className="fi-global-search-result-details">
                                 {result.details.map((detail) => (

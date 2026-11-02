@@ -1,7 +1,7 @@
 /**
  * A thin client for Biteship's REST API, ported from
  * App\Support\Shipping\Biteship\BiteshipClient. Auth is one `Authorization: <api key>`
- * header. Booking (createOrder) and tracking come with the Biteship webhook (step 5).
+ * header.
  */
 const BASE_URL = "https://api.biteship.com/v1";
 
@@ -47,6 +47,16 @@ export class BiteshipClient {
     const body = await this.request("POST", "/rates/couriers", { ...params, couriers: codes.join(",") });
 
     return Array.isArray(body.pricing) ? (body.pricing as Record<string, unknown>[]) : [];
+  }
+
+  /** Books the courier for a delivery order (`POST /orders`): the waybill, tracking id and status. */
+  async createOrder(params: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.request("POST", "/orders", params);
+  }
+
+  /** Biteship's own tracking record for one shipment. */
+  async track(trackingId: string): Promise<Record<string, unknown>> {
+    return this.request("GET", `/trackings/${encodeURIComponent(trackingId)}`);
   }
 
   private async request(method: "GET" | "POST", path: string, body?: unknown): Promise<Record<string, unknown>> {

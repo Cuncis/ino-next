@@ -156,6 +156,7 @@ export function FiConfirmModal({
   color = "primary",
   processing,
   t,
+  icon = "o-exclamation-triangle",
 }: {
   open: boolean;
   onClose: () => void;
@@ -164,6 +165,8 @@ export function FiConfirmModal({
   color?: FiColor;
   processing: boolean;
   t: (text: string) => string;
+  /** Filament's delete actions show a bin instead of the warning triangle */
+  icon?: string;
 }) {
   return (
     <FiModal
@@ -171,7 +174,7 @@ export function FiConfirmModal({
       onClose={onClose}
       heading={heading}
       description={t("Apakah Anda yakin ingin melakukan ini?")}
-      icon="o-exclamation-triangle"
+      icon={icon}
       iconColor={color}
       alignment="center"
       onSubmit={onConfirm}

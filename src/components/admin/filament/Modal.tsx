@@ -253,7 +253,7 @@ export function FiTextField({
 
 /* ---------------- Toasts (Filament\Notifications\Notification::make()->send()) ---------------- */
 
-export type FiToast = { id: number; status: "success" | "danger" | "warning" | "info"; title: string; body?: string };
+export type FiToast = { id: number; status: "success" | "danger" | "warning" | "info"; title: string; body?: string; persistent?: boolean };
 
 const TOAST_ICONS: Record<FiToast["status"], string> = {
   success: "o-check-circle",
@@ -266,7 +266,35 @@ const ToastContext = createContext<(toast: Omit<FiToast, "id">) => void>(() => {
 
 export const useFiToast = () => useContext(ToastContext);
 
-/** Holds the toasts; each closes itself after 6 seconds, like Filament's default duration. */
+const NEXT_PAGE_TOASTS = "fi-next-page-toasts";
+
+/**
+ * Toasts for the page an action redirects to, as Filament flashes its notifications to
+ * the session: each page has its own toaster, so the next one shows them when it opens.
+ */
+export function toastOnNextPage(toasts: Omit<FiToast, "id">[]): void {
+  try {
+    const queued = JSON.parse(window.sessionStorage.getItem(NEXT_PAGE_TOASTS) ?? "[]") as Omit<FiToast, "id">[];
+
+    window.sessionStorage.setItem(NEXT_PAGE_TOASTS, JSON.stringify([...queued, ...toasts]));
+  } catch {
+    // no storage: the toasts are lost, the action itself is done
+  }
+}
+
+function takeNextPageToasts(): Omit<FiToast, "id">[] {
+  try {
+    const queued = JSON.parse(window.sessionStorage.getItem(NEXT_PAGE_TOASTS) ?? "[]") as Omit<FiToast, "id">[];
+
+    window.sessionStorage.removeItem(NEXT_PAGE_TOASTS);
+
+    return queued;
+  } catch {
+    return [];
+  }
+}
+
+/** Holds the toasts; each closes itself after 6 seconds (Filament's default), unless it is persistent. */
 export function FiToaster({ initial = [], children }: { initial?: Omit<FiToast, "id">[]; children: ReactNode }) {
   const [toasts, setToasts] = useState<FiToast[]>([]);
   const next = useRef(1);
@@ -277,7 +305,10 @@ export function FiToaster({ initial = [], children }: { initial?: Omit<FiToast, 
       const id = next.current++;
 
       setToasts((current) => [...current, { ...toast, id }]);
-      window.setTimeout(() => remove(id), 6000);
+
+      if (!toast.persistent) {
+        window.setTimeout(() => remove(id), 6000);
+      }
     },
     [remove],
   );
@@ -287,6 +318,11 @@ export function FiToaster({ initial = [], children }: { initial?: Omit<FiToast, 
     // only the toasts the page arrived with
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // toasts an action on the previous page left for this one (also when a kept page shows again)
+  useEffect(() => {
+    takeNextPageToasts().forEach(push);
+  }, [push]);
 
   return (
     <ToastContext.Provider value={push}>

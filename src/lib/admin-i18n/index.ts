@@ -16,6 +16,8 @@ export const ADMIN_LOCALES: AdminLocale[] = ["id", "en"];
 /** Filament's own interface strings: Indonesian as Filament writes it, and its English. */
 const FILAMENT_EN: Record<string, string> = {
   Dasbor: "Dashboard",
+  // the table's column manager button (the importer uses the same words for "Select a column")
+  "Pilih kolom": "Column manager",
   Keluar: "Sign out",
   "Buka notifikasi": "Notifications",
   "Menu pengguna": "User menu",

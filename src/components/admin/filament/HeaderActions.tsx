@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FiActionFormModal, postAction } from "./ActionForm";
 import type { ListAction } from "./ListTable";
-import { FiConfirmModal, FiModal, FiTextField, useFiToast, type FiToast } from "./Modal";
+import { FiConfirmModal, toastOnNextPage, useFiToast } from "./Modal";
+import { FiIcon } from "./Icon";
 import { FiButton } from "./ui";
 
 /**
@@ -13,39 +15,35 @@ import { FiButton } from "./ui";
  */
 type Labels = { close: string; cancel: string };
 
-type Result = { toast?: Omit<FiToast, "id">; redirect?: string; errors?: Record<string, string[]> };
-
-export function FiHeaderActions({ actions, labels }: { actions: ListAction[]; labels: Labels }) {
+export function FiHeaderActions({ actions, labels, onResult }: { actions: ListAction[]; labels: Labels; onResult?: (key: string, result: unknown) => void }) {
   const router = useRouter();
   const toast = useFiToast();
   const [pending, setPending] = useState<ListAction | null>(null);
-  const [value, setValue] = useState("");
-  const [error, setError] = useState<string | undefined>();
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
-  const run = async (action: ListAction, data: Record<string, string> = {}) => {
+  const run = async (action: ListAction, data: Record<string, string> = {}, files: Record<string, File[]> = {}) => {
     setBusy(action.key);
 
     try {
-      const response = await fetch(action.endpoint!, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
-        body: JSON.stringify(data),
-        credentials: "same-origin",
-      });
-      const result = (await response.json().catch(() => ({}))) as Result;
+      const result = await postAction(action.endpoint!, data, files);
 
-      if (response.status === 422 && action.form) {
-        setError(result.errors?.[action.form.field.name]?.[0]);
+      if (result.status === 422 && action.form) {
+        setErrors(Object.fromEntries(Object.entries(result.errors ?? {}).map(([field, messages]) => [field, messages[0]])));
 
         return;
       }
 
       setPending(null);
-      setError(undefined);
+      setErrors({});
+
+      if (result.result !== undefined) {
+        onResult?.(action.key, result.result);
+      }
 
       if (result.toast) {
-        toast(result.toast);
+        if (result.redirect) toastOnNextPage([result.toast]);
+        else toast(result.toast);
       }
 
       if (result.redirect) {
@@ -60,8 +58,7 @@ export function FiHeaderActions({ actions, labels }: { actions: ListAction[]; la
 
   const start = (action: ListAction) => {
     if (action.confirm || action.form) {
-      setValue(action.form?.field.value ?? "");
-      setError(undefined);
+      setErrors({});
       setPending(action);
     } else {
       void run(action);
@@ -71,8 +68,11 @@ export function FiHeaderActions({ actions, labels }: { actions: ListAction[]; la
   return (
     <>
       {actions.map((action) =>
-        action.href ? (
+        action.items ? (
+          <ActionGroup key={action.key} group={action} onPick={start} />
+        ) : action.href ? (
           <a key={action.key} href={action.href} className={`fi-ac-btn-action fi-btn fi-size-md ${action.color === "gray" ? "" : "fi-color fi-color-primary fi-bg-color-400 hover:fi-bg-color-300 dark:fi-bg-color-600 dark:hover:fi-bg-color-700 fi-text-color-950 hover:fi-text-color-800 dark:fi-text-color-0 dark:hover:fi-text-color-0"}`}>
+            {action.icon ? <FiIcon name={action.icon} /> : null}
             {action.label}
           </a>
         ) : (
@@ -94,27 +94,64 @@ export function FiHeaderActions({ actions, labels }: { actions: ListAction[]; la
         />
       ) : null}
       {pending?.form ? (
-        <FiModal
-          open
-          onClose={() => setPending(null)}
-          heading={pending.form.heading}
-          width="4xl"
-          closeLabel={labels.close}
-          onSubmit={() => void run(pending, { [pending.form!.field.name]: value })}
-          footer={
-            <>
-              <FiButton type="submit" loading={busy === pending.key} wrapLabel>
-                {pending.form.submitLabel}
-              </FiButton>
-              <FiButton color="gray" onClick={() => setPending(null)}>
-                {pending.form.cancelLabel}
-              </FiButton>
-            </>
-          }
-        >
-          <FiTextField id={`mountedActionSchema0.${pending.form.field.name}`} label={pending.form.field.label} required={pending.form.field.required} value={value} onChange={setValue} error={error} autoFocus />
-        </FiModal>
+        <FiActionFormModal form={pending.form} busy={busy === pending.key} errors={errors} closeLabel={labels.close} onClose={() => setPending(null)} onSubmit={(values, files) => void run(pending, values, files)} />
       ) : null}
     </>
+  );
+}
+
+/** An ActionGroup shown as a button (`->button()`): its actions in a dropdown; a download is a link. */
+function ActionGroup({ group, onPick }: { group: ListAction; onPick: (action: ListAction) => void }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const close = (event: MouseEvent) => !root.current?.contains(event.target as Node) && setOpen(false);
+
+    document.addEventListener("mousedown", close);
+
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  return (
+    <div className="fi-dropdown" ref={root} style={{ position: "relative" }}>
+      <div className="fi-dropdown-trigger">
+        <button type="button" className="fi-ac-btn-group fi-btn fi-size-md" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {group.icon ? <FiIcon name={group.icon} /> : null}
+          {group.label}
+        </button>
+      </div>
+      {open ? (
+        <div className="fi-dropdown-panel" role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 8px)", zIndex: 20 }}>
+          <div className="fi-dropdown-list" role="group">
+            {group.items!.map((item) =>
+              item.href ? (
+                <a key={item.key} href={item.href} download className="fi-dropdown-list-item fi-ac-grouped-action" role="menuitem" tabIndex={-1} onClick={() => setOpen(false)}>
+                  <span className="fi-dropdown-list-item-label">{item.label}</span>
+                </a>
+              ) : (
+                <button
+                  key={item.key}
+                  type="button"
+                  className="fi-dropdown-list-item fi-ac-grouped-action"
+                  role="menuitem"
+                  tabIndex={-1}
+                  onClick={() => {
+                    setOpen(false);
+                    onPick(item);
+                  }}
+                >
+                  <span className="fi-dropdown-list-item-label">{item.label}</span>
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

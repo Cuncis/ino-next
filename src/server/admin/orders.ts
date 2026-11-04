@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { branches, customers, db, orderItems, orders, products, shipments } from "@/db";
 import { FULFILMENT_STAGES, PAYMENT_METHODS } from "@/lib/admin-options";
 import { branchScope, type ScopedStaff } from "@/lib/branch-scope";
@@ -55,23 +55,9 @@ export function shipmentStatusColor(status: string): FiColor {
  * Filament's table search: the search split into words, each of which must appear
  * (case-insensitively) in at least one searchable column.
  */
-export function searchWords(search: string | null | undefined, columns: SQL[]): SQL | undefined {
-  const words = (search ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word !== "");
+import { searchWords, trashedCondition } from "./list-query";
 
-  if (!words.length) {
-    return undefined;
-  }
-
-  return and(...words.map((word) => or(...columns.map((column) => sql`lower(${column}::text) like ${`%${word.toLowerCase()}%`}`))));
-}
-
-/** "Data yang dihapus": "" without (default), "1" with, "0" only deleted records. */
-export function trashedCondition(column: typeof orders.deletedAt, trashed: string | undefined): SQL | undefined {
-  return trashed === "1" ? undefined : trashed === "0" ? isNotNull(column) : isNull(column);
-}
+export { searchWords, trashedCondition };
 
 export type OrderListQuery = {
   search?: string;

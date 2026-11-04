@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FiInput, FiNativeSelect, FiSearchableSelect, FiTextarea, type SelectOption } from "@/components/admin/filament/Fields";
 import { FiIcon } from "@/components/admin/filament/Icon";
 import type { ListAction } from "@/components/admin/filament/ListTable";
-import { FiConfirmModal, useFiToast, type FiToast } from "@/components/admin/filament/Modal";
+import { FiConfirmModal, toastOnNextPage, useFiToast, type FiToast } from "@/components/admin/filament/Modal";
 import { FiButton } from "@/components/admin/filament/ui";
 
 /**
@@ -139,17 +139,15 @@ export default function OrderForm({
 
       setErrors({});
 
-      if (result.toast) {
-        toast(result.toast);
-      }
-
-      if (result.redirect) {
-        if (another) {
-          setValues({ ...initial, items: [newItem()] });
-        }
-
+      // "Buat & buat lainnya" stays on an emptied form, as Livewire does
+      if (another) {
+        if (result.toast) toast(result.toast);
+        setValues({ ...initial, items: [newItem()] });
+      } else if (result.redirect) {
+        if (result.toast) toastOnNextPage([result.toast]);
         router.push(result.redirect);
       } else {
+        if (result.toast) toast(result.toast);
         router.refresh();
       }
     } finally {
@@ -172,7 +170,8 @@ export default function OrderForm({
       setConfirming(null);
 
       if (result.toast) {
-        toast(result.toast);
+        if (result.redirect) toastOnNextPage([result.toast]);
+        else toast(result.toast);
       }
 
       if (result.redirect) {

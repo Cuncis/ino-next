@@ -10,7 +10,9 @@ o-tag o-archive-box o-document-text o-qr-code o-banknotes o-shield-check o-arrow
 o-arrow-top-right-on-square o-question-mark-circle o-receipt-refund o-building-office o-scale o-key
 o-arrow-up-tray o-shield-exclamation o-table-cells o-arrow-path
 c-eye c-pencil-square c-trash m-chevron-left m-ellipsis-vertical m-funnel m-trash o-check-badge
-m-arrow-uturn-left m-arrow-left-end-on-rectangle c-x-mark o-trash o-arrow-uturn-left""".split()
+m-arrow-uturn-left m-arrow-left-end-on-rectangle c-x-mark o-trash o-arrow-uturn-left
+m-view-columns m-arrows-up-down m-check m-bars-2 m-chevron-up m-chevron-down o-arrow-down-tray
+o-shopping-cart o-inbox-arrow-down o-adjustments-horizontal""".split()
 icons = {}
 for name in NAMES:
     svg = open(f"{SOURCE}/{name}.svg").read()

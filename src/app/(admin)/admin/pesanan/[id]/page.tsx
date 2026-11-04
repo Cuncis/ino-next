@@ -38,7 +38,7 @@ export default async function Page({ params }: PageProps<"/admin/pesanan/[id]">)
       label: t("Tandai Terpenuhi"),
       icon: "o-check-badge",
       endpoint: endpoint("handOver"),
-      form: { heading: t("Tandai Terpenuhi"), field: { name: "code", label: t("Kode Ambil"), required: true, maxLength: 10 }, submitLabel: t("Kirim"), cancelLabel: t("Batal") },
+      form: { heading: t("Tandai Terpenuhi"), fields: [{ kind: "text", name: "code", label: t("Kode Ambil"), required: true, maxLength: 10 }], submitLabel: t("Kirim"), cancelLabel: t("Batal") },
     },
     cancel: {
       key: "cancel",

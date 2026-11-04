@@ -48,7 +48,7 @@ export default async function Page({ searchParams }: PageProps<"/admin/pengambil
           icon: "o-check-badge",
           color: "primary",
           endpoint: `/admin/pengambilan/${order.id}/serahkan`,
-          form: { heading: t("Serahkan"), field: { name: "code", label: t("Kode Ambil"), required: true, maxLength: 10, value: prefill }, submitLabel: t("Kirim"), cancelLabel: t("Batal") },
+          form: { heading: t("Serahkan"), fields: [{ kind: "text", name: "code", label: t("Kode Ambil"), required: true, maxLength: 10, value: prefill }], submitLabel: t("Kirim"), cancelLabel: t("Batal") },
         },
       ],
     })),

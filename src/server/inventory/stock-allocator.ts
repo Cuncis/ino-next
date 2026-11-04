@@ -223,7 +223,7 @@ const available = (stock: BranchStock) => Math.max(stock.quantity - stock.reserv
  * App\Observers\BranchStockObserver: the branch's staff hear once, when a product with a
  * reorder point first drops to it, not on every sale after that.
  */
-async function warnIfNewlyLow(before: BranchStock, after: BranchStock, executor: DbExecutor): Promise<void> {
+export async function warnIfNewlyLow(before: BranchStock, after: BranchStock, executor: DbExecutor): Promise<void> {
   if (after.reorderPoint <= 0 || (after.quantity === before.quantity && after.reservedQuantity === before.reservedQuantity)) {
     return;
   }
@@ -239,6 +239,6 @@ async function warnIfNewlyLow(before: BranchStock, after: BranchStock, executor:
 }
 
 /** `received_at` is a date: today in Jakarta. */
-function jakartaToday(now: Date): string {
+export function jakartaToday(now: Date): string {
   return new Date(now.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }

@@ -1,6 +1,8 @@
 import { authorizes, can, loadStaffAccess, type StaffAccess } from "@/lib/permissions";
 import { errorPageResponse } from "@/server/error-page";
+import { CATALOG_PERMISSIONS, findAttribute, findCategory, findSupplier } from "./catalog-records";
 import { findAdminOrder, ORDER_PERMISSIONS } from "./orders";
+import { findAdminProduct, PRODUCT_PERMISSIONS } from "./products";
 import type { Staff } from "./staff-auth";
 
 /**
@@ -17,6 +19,17 @@ type Rule = {
 };
 
 const orderExists = async (id: number, staff: Staff) => (await findAdminOrder(id, staff)) !== null;
+const productExists = async (id: number) => (await findAdminProduct(id)) !== null;
+
+/** Kategori, Atribut and Pemasok: list, create and edit; there is no page for one record. */
+function catalogRules(slug: string, exists: (id: number) => Promise<unknown>): Rule[] {
+  return [
+    { pattern: new RegExp(`^/admin/${slug}$`), allowed: (access) => authorizes(access, CATALOG_PERMISSIONS, "viewAny") },
+    { pattern: new RegExp(`^/admin/${slug}/create$`), allowed: (access) => authorizes(access, CATALOG_PERMISSIONS, "create") },
+    { pattern: new RegExp(`^/admin/${slug}/([^/]+)/edit$`), allowed: (access) => authorizes(access, CATALOG_PERMISSIONS, "update"), record: async (id) => (await exists(id)) !== null },
+    { pattern: new RegExp(`^/admin/${slug}/([^/]+)$`), allowed: () => true, record: async () => false },
+  ];
+}
 
 const RULES: Rule[] = [
   { pattern: /^\/admin\/pesanan$/, allowed: (access) => authorizes(access, ORDER_PERMISSIONS, "viewAny") },
@@ -24,6 +37,15 @@ const RULES: Rule[] = [
   { pattern: /^\/admin\/pesanan\/([^/]+)$/, allowed: (access) => authorizes(access, ORDER_PERMISSIONS, "view"), record: orderExists },
   { pattern: /^\/admin\/pesanan\/([^/]+)\/edit$/, allowed: (access) => authorizes(access, ORDER_PERMISSIONS, "update"), record: orderExists },
   { pattern: /^\/admin\/pengambilan$/, allowed: (access) => can(access, "Pesanan:Proses") },
+  { pattern: /^\/admin\/produk$/, allowed: (access) => authorizes(access, PRODUCT_PERMISSIONS, "viewAny") },
+  { pattern: /^\/admin\/produk\/create$/, allowed: (access) => authorizes(access, PRODUCT_PERMISSIONS, "create") },
+  // ProductImport::canAccess()
+  { pattern: /^\/admin\/produk\/impor$/, allowed: (access) => can(access, "Produk:Lihat") },
+  { pattern: /^\/admin\/produk\/([^/]+)$/, allowed: (access) => authorizes(access, PRODUCT_PERMISSIONS, "view"), record: productExists },
+  { pattern: /^\/admin\/produk\/([^/]+)\/edit$/, allowed: (access) => authorizes(access, PRODUCT_PERMISSIONS, "update"), record: productExists },
+  ...catalogRules("kategori", findCategory),
+  ...catalogRules("atribut", findAttribute),
+  ...catalogRules("pemasok", findSupplier),
 ];
 
 /** The error response for this page, or null when the staff member may open it. */

@@ -25,6 +25,10 @@ export function listLabels(locale: AdminLocale): ListSpec["labels"] {
     sure: t("Apakah Anda yakin ingin melakukan ini?"),
     confirm: t("Konfirmasi"),
     actionsColumn: t("Aksi"),
+    columns: t("Kolom"),
+    columnManager: t("Pilih kolom"),
+    applyColumns: t("Terapkan kolom"),
+    resetColumns: t("Atur ulang"),
   };
 }
 
@@ -111,3 +115,15 @@ export function paging(query: Record<string, string | string[] | undefined>): { 
 }
 
 export const queryString = (value: string | string[] | undefined): string => (typeof value === "string" ? value : "");
+
+/** Filament's TextColumn::dateTime(): Carbon's translatedFormat('M j, Y H:i:s') in Jakarta time. */
+export function adminDateTime(date: Date | null | undefined, locale: AdminLocale): string | null {
+  if (!date) {
+    return null;
+  }
+
+  const jakarta = new Date(date.getTime() + 7 * 3600_000).toISOString();
+  const month = (locale === "en" ? EN_MONTHS : SHORT_MONTHS)[Number(jakarta.slice(5, 7)) - 1];
+
+  return `${month} ${Number(jakarta.slice(8, 10))}, ${jakarta.slice(0, 4)} ${jakarta.slice(11, 19)}`;
+}

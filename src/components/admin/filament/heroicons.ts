@@ -426,5 +426,75 @@ export const HEROICONS: Record<string, { viewBox: string; fill: string | null; s
   "stroke": "currentColor",
   "strokeWidth": "1.5",
   "body": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3\"/>"
+ },
+ "m-view-columns": {
+  "viewBox": "0 0 20 20",
+  "fill": "currentColor",
+  "stroke": null,
+  "strokeWidth": null,
+  "body": "<path d=\"M14 17h2.75A2.25 2.25 0 0 0 19 14.75v-9.5A2.25 2.25 0 0 0 16.75 3H14v14ZM12.5 3h-5v14h5V3ZM3.25 3H6v14H3.25A2.25 2.25 0 0 1 1 14.75v-9.5A2.25 2.25 0 0 1 3.25 3Z\"/>"
+ },
+ "m-arrows-up-down": {
+  "viewBox": "0 0 20 20",
+  "fill": "currentColor",
+  "stroke": null,
+  "strokeWidth": null,
+  "body": "<path fill-rule=\"evenodd\" d=\"M2.24 6.8a.75.75 0 0 0 1.06-.04l1.95-2.1v8.59a.75.75 0 0 0 1.5 0V4.66l1.95 2.1a.75.75 0 1 0 1.1-1.02l-3.25-3.5a.75.75 0 0 0-1.1 0L2.2 5.74a.75.75 0 0 0 .04 1.06Zm8 6.4a.75.75 0 0 0-.04 1.06l3.25 3.5a.75.75 0 0 0 1.1 0l3.25-3.5a.75.75 0 1 0-1.1-1.02l-1.95 2.1V6.75a.75.75 0 0 0-1.5 0v8.59l-1.95-2.1a.75.75 0 0 0-1.06-.04Z\" clip-rule=\"evenodd\"/>"
+ },
+ "m-check": {
+  "viewBox": "0 0 20 20",
+  "fill": "currentColor",
+  "stroke": null,
+  "strokeWidth": null,
+  "body": "<path fill-rule=\"evenodd\" d=\"M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z\" clip-rule=\"evenodd\"/>"
+ },
+ "m-bars-2": {
+  "viewBox": "0 0 20 20",
+  "fill": "currentColor",
+  "stroke": null,
+  "strokeWidth": null,
+  "body": "<path fill-rule=\"evenodd\" d=\"M2 6.75A.75.75 0 0 1 2.75 6h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 6.75Zm0 6.5a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z\" clip-rule=\"evenodd\"/>"
+ },
+ "m-chevron-up": {
+  "viewBox": "0 0 20 20",
+  "fill": "currentColor",
+  "stroke": null,
+  "strokeWidth": null,
+  "body": "<path fill-rule=\"evenodd\" d=\"M9.47 6.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L10 8.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06l4.25-4.25Z\" clip-rule=\"evenodd\"/>"
+ },
+ "m-chevron-down": {
+  "viewBox": "0 0 20 20",
+  "fill": "currentColor",
+  "stroke": null,
+  "strokeWidth": null,
+  "body": "<path fill-rule=\"evenodd\" d=\"M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z\" clip-rule=\"evenodd\"/>"
+ },
+ "o-arrow-down-tray": {
+  "viewBox": "0 0 24 24",
+  "fill": "none",
+  "stroke": "currentColor",
+  "strokeWidth": "1.5",
+  "body": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3\"/>"
+ },
+ "o-shopping-cart": {
+  "viewBox": "0 0 24 24",
+  "fill": "none",
+  "stroke": "currentColor",
+  "strokeWidth": "1.5",
+  "body": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z\"/>"
+ },
+ "o-inbox-arrow-down": {
+  "viewBox": "0 0 24 24",
+  "fill": "none",
+  "stroke": "currentColor",
+  "strokeWidth": "1.5",
+  "body": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3\"/>"
+ },
+ "o-adjustments-horizontal": {
+  "viewBox": "0 0 24 24",
+  "fill": "none",
+  "stroke": "currentColor",
+  "strokeWidth": "1.5",
+  "body": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75\"/>"
  }
 };

@@ -151,7 +151,11 @@ function runValidation<T extends Record<string, unknown>>(
     const nullable = fieldRules.includes("nullable");
     const numeric = fieldRules.some((rule) => rule === "numeric" || rule === "integer");
     const fail = (rule: string, text: string) => {
-      (errors[field] ??= []).push(messages[`${field}.${rule}`] ?? text);
+      // a custom message for this field and rule, or for the rule on every field, with
+      // its `:attribute` filled in as Laravel does
+      const custom = messages[`${field}.${rule}`] ?? messages[rule];
+
+      (errors[field] ??= []).push(custom === undefined ? text : custom.replaceAll(":attribute", attributeName(field, attributes)));
 
       if (IMPLICIT.has(rule)) {
         failedImplicit.add(field);
@@ -237,6 +241,15 @@ function runValidation<T extends Record<string, unknown>>(
         case "in":
           if (!parameters.includes(String(value))) fail(rule, message(rule, field, attributes, {}));
           break;
+        case "gt": {
+          // Laravel's validateGt against another field: numbers compare as numbers, and an
+          // empty other field (or a value of another type) never passes
+          const other = valueAt(input, parameters[0]).value;
+          const passes = numeric && isNumeric(value) && isNumeric(other) ? Number(value) > Number(other) : !isEmpty(other) && typeof other === typeof value && sizeOf(value, numeric) > sizeOf(other, numeric);
+
+          if (!passes) fail(rule, message(rule, field, attributes, { value: attributeName(parameters[0], attributes) }, sizeType(value, numeric)));
+          break;
+        }
         case "min": {
           if (sizeOf(value, numeric) < Number(parameters[0])) fail(rule, message(rule, field, attributes, { min: parameters[0] }, sizeType(value, numeric)));
           break;

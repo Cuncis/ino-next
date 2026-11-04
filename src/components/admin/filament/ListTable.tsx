@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { FiActionFormModal, postAction, type ActionFormSpec, type ActionResult } from "./ActionForm";
 import { FiIcon } from "./Icon";
-import { FiConfirmModal, FiModal, FiTextField, useFiToast, type FiToast } from "./Modal";
+import { FiConfirmModal, toastOnNextPage, useFiToast } from "./Modal";
 import { FiBadge, FiButton, FiLinkAction, type FiColor } from "./ui";
 
 /**
@@ -13,11 +14,15 @@ import { FiBadge, FiButton, FiLinkAction, type FiColor } from "./ui";
  * in the address (`?search=&filter_x=&page=&perPage=`), so the server renders the rows.
  */
 export type ListCell =
-  | { kind: "text"; text: string; weight?: "semibold" | "bold"; alignRight?: boolean }
-  | { kind: "badge"; text: string; color: FiColor }
+  | { kind: "text"; text: string; weight?: "semibold" | "bold"; alignRight?: boolean; tooltip?: string }
+  | { kind: "badge"; text: string; color: FiColor; alignRight?: boolean }
+  /** ImageColumn ->square() */
+  | { kind: "image"; src: string }
+  /** IconColumn ->boolean() */
+  | { kind: "icon"; value: boolean; label: string }
   | { kind: "empty" };
 
-export type ActionForm = { name: string; label: string; required?: boolean; maxLength?: number; value?: string };
+export type { ActionFormSpec };
 
 export type ListAction = {
   key: string;
@@ -28,16 +33,38 @@ export type ListAction = {
   /** POSTed with `{ ids }` for bulk actions, or the form's data for a record action */
   endpoint?: string;
   confirm?: { heading: string; description: string; submitLabel: string; color: FiColor; icon?: string };
-  form?: { heading: string; field: ActionForm; submitLabel: string; cancelLabel: string };
+  form?: ActionFormSpec;
+  /** an ActionGroup: these actions in a dropdown under this button */
+  items?: ListAction[];
 };
 
-export type ListRow = { id: string; url: string | null; cells: Record<string, ListCell>; actions: ListAction[] };
+export type ListRow = { id: string; url: string | null; cells: Record<string, ListCell>; actions: ListAction[]; /** names the row for screen readers while reordering */ title?: string };
 
 export type ListFilter = { name: string; label: string; options: { value: string; label: string }[]; value: string; defaultValue: string };
 
+export type ListColumn = {
+  name: string;
+  className: string;
+  label: string;
+  alignRight?: boolean;
+  /** `->toggleable()`: shown, or hidden until picked in the column manager */
+  toggleable?: "shown" | "hidden";
+  sortable?: boolean;
+};
+
 export type ListSpec = {
   heading: string;
-  columns: { name: string; className: string; label: string; alignRight?: boolean }[];
+  /** remembers the columns picked in the column manager, per table */
+  tableKey?: string;
+  columns: ListColumn[];
+  /** `?sort=column:direction`, for a sortable column */
+  sort?: { column: string; direction: "asc" | "desc" } | null;
+  /** a relation manager's table: its heading and header actions above the toolbar */
+  header?: { heading: string; actions: ListAction[] };
+  /** `->reorderable()`: drag rows into order, posting the ids in their new order */
+  reorder?: { endpoint: string; labels: { enable: string; disable: string; indicator: string; position: string; moveUp: string; moveDown: string } };
+  /** a relation manager pages its rows itself, not in the address */
+  localPaging?: boolean;
   rows: ListRow[];
   total: number;
   page: number;
@@ -66,39 +93,31 @@ export type ListSpec = {
     | "confirm"
     | "actionsColumn",
     string
-  >;
+  > &
+    Partial<Record<"columns" | "columnManager" | "applyColumns" | "resetColumns", string>>;
 };
 
-type ActionResult = { toast?: Omit<FiToast, "id">; redirect?: string; errors?: Record<string, string[]> };
-
-async function postAction(endpoint: string, body: unknown): Promise<ActionResult & { status: number }> {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
-    body: JSON.stringify(body),
-    credentials: "same-origin",
-  });
-
-  return { status: response.status, ...((await response.json().catch(() => ({}))) as ActionResult) };
-}
-
-/** Laravel's paginator window: every page up to 13, otherwise the ends and 3 around the current one. */
+/**
+ * Laravel's UrlWindow with Filament's `onEachSide(0)`: every page up to 7; otherwise the
+ * first four (or last four) near an end, or the current page alone in the middle, with
+ * the first two and last two pages around it.
+ */
 function pageElements(current: number, last: number): (number | "...")[] {
-  if (last < 14) {
-    return Array.from({ length: last }, (_, index) => index + 1);
-  }
-
   const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => from + index);
 
-  if (current <= 7) {
-    return [...range(1, 10), "...", last - 1, last];
+  if (last < 8) {
+    return range(1, last);
   }
 
-  if (current > last - 7) {
-    return [1, 2, "...", ...range(last - 9, last)];
+  if (current <= 4) {
+    return [...range(1, 4), "...", last - 1, last];
   }
 
-  return [1, 2, "...", ...range(current - 3, current + 3), "...", last - 1, last];
+  if (current > last - 4) {
+    return [1, 2, "...", ...range(last - 3, last)];
+  }
+
+  return [1, 2, "...", current, "...", last - 1, last];
 }
 
 function Cell({ cell }: { cell: ListCell | undefined }) {
@@ -108,8 +127,34 @@ function Cell({ cell }: { cell: ListCell | undefined }) {
 
   if (cell.kind === "badge") {
     return (
-      <div className="fi-ta-text fi-ta-text-item fi-ta-text-has-badges">
+      <div className={`fi-ta-text fi-ta-text-item fi-ta-text-has-badges${cell.alignRight ? " fi-align-right" : ""}`}>
         <FiBadge color={cell.color}>{cell.text}</FiBadge>
+      </div>
+    );
+  }
+
+  if (cell.kind === "image") {
+    return (
+      <div className="fi-ta-image">
+        {/* eslint-disable-next-line @next/next/no-img-element -- Filament's ImageColumn */}
+        <img alt="" src={cell.src} style={{ height: "2.5rem", width: "2.5rem" }} />
+      </div>
+    );
+  }
+
+  if (cell.kind === "icon") {
+    return (
+      <div className="fi-ta-icon">
+        <FiIcon name={cell.value ? "o-check-circle" : "o-x-circle"} size="lg" className={`fi-color fi-color-${cell.value ? "success" : "danger"} fi-text-color-600 dark:fi-text-color-600`} />
+        <span className="fi-sr-only">{cell.label}</span>
+      </div>
+    );
+  }
+
+  if (cell.tooltip) {
+    return (
+      <div className={`fi-ta-text-item  fi-size-sm  fi-ta-text${cell.alignRight ? " fi-align-right" : ""}`}>
+        <span title={cell.tooltip}>{cell.text}</span>
       </div>
     );
   }
@@ -119,6 +164,44 @@ function Cell({ cell }: { cell: ListCell | undefined }) {
   }
 
   return <div className={`fi-ta-text fi-ta-text-item fi-size-sm${cell.alignRight ? " fi-align-right" : ""}`}>{cell.text}</div>;
+}
+
+/** The columns picked in the column manager, remembered in this browser per table. */
+function useColumnChoice(spec: ListSpec): [Record<string, boolean>, (next: Record<string, boolean>) => void] {
+  const defaults = useMemo(() => Object.fromEntries(spec.columns.map((column) => [column.name, column.toggleable !== "hidden"])), [spec.columns]);
+  const [shown, setShown] = useState(defaults);
+  const storageKey = spec.tableKey ? `fi-ta-columns:${spec.tableKey}` : null;
+
+  useEffect(() => {
+    if (!storageKey) {
+      return;
+    }
+
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(storageKey) ?? "null") as Record<string, boolean> | null;
+
+      if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- the browser's choice is only known after hydration
+        setShown({ ...defaults, ...saved });
+      }
+    } catch {
+      // no storage: the defaults stay
+    }
+  }, [storageKey, defaults]);
+
+  const save = (next: Record<string, boolean>) => {
+    setShown(next);
+
+    try {
+      if (storageKey) {
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      }
+    } catch {
+      // no storage: only this page view remembers
+    }
+  };
+
+  return [shown, save];
 }
 
 export function FiListTable({ spec }: { spec: ListSpec }) {
@@ -132,13 +215,40 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(() => Object.fromEntries(spec.filters.map((filter) => [filter.name, filter.value])));
   const [pending, setPending] = useState<{ action: ListAction; ids: string[] } | null>(null);
-  const [formValue, setFormValue] = useState("");
-  const [formError, setFormError] = useState<string | undefined>();
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [shownColumns, saveShownColumns] = useColumnChoice(spec);
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [draftColumns, setDraftColumns] = useState(shownColumns);
+  const [reordering, setReordering] = useState(false);
+  const [order, setOrder] = useState<string[]>([]);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [localPage, setLocalPage] = useState(1);
+  const [localPerPage, setLocalPerPage] = useState(10);
   const filtersRef = useRef<HTMLDivElement>(null);
   const bulkRef = useRef<HTMLDivElement>(null);
+  const columnsRef = useRef<HTMLDivElement>(null);
+  const columns = spec.columns.filter((column) => shownColumns[column.name] !== false);
+  // a relation manager pages in the browser; reordering shows every row
+  const paging = spec.localPaging ? { page: localPage, perPage: localPerPage } : { page: spec.page, perPage: spec.perPage };
+  const rows = reordering
+    ? order.map((id) => spec.rows.find((row) => row.id === id)!).filter(Boolean)
+    : spec.localPaging
+      ? spec.rows.slice((paging.page - 1) * paging.perPage, paging.page * paging.perPage)
+      : spec.rows;
 
   const go = (changes: Record<string, string | null>) => {
+    if (spec.localPaging) {
+      if ("perPage" in changes) {
+        setLocalPerPage(Number(changes.perPage ?? 10));
+        setLocalPage(1);
+      } else if ("page" in changes) {
+        setLocalPage(Number(changes.page ?? 1));
+      }
+
+      return;
+    }
+
     const query = new URLSearchParams(searchParams.toString());
 
     for (const [key, value] of Object.entries(changes)) {
@@ -170,19 +280,20 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
     const close = (event: MouseEvent) => {
       if (filtersOpen && !filtersRef.current?.contains(event.target as Node)) setFiltersOpen(false);
       if (bulkOpen && !bulkRef.current?.contains(event.target as Node)) setBulkOpen(false);
+      if (columnsOpen && !columnsRef.current?.contains(event.target as Node)) setColumnsOpen(false);
     };
 
     document.addEventListener("mousedown", close);
 
     return () => document.removeEventListener("mousedown", close);
-  }, [filtersOpen, bulkOpen]);
+  }, [filtersOpen, bulkOpen, columnsOpen]);
 
   const activeFilters = spec.filters.filter((filter) => filter.value !== filter.defaultValue).length;
-  const pageIds = spec.rows.map((row) => row.id);
+  const pageIds = rows.map((row) => row.id);
   const allOnPage = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
-  const lastPage = Math.max(Math.ceil(spec.total / spec.perPage), 1);
-  const first = spec.total === 0 ? 0 : (spec.page - 1) * spec.perPage + 1;
-  const last = Math.min(spec.page * spec.perPage, spec.total);
+  const lastPage = Math.max(Math.ceil(spec.total / paging.perPage), 1);
+  const first = spec.total === 0 ? 0 : (paging.page - 1) * paging.perPage + 1;
+  const last = Math.min(paging.page * paging.perPage, spec.total);
   const overview = useMemo(
     () =>
       spec.labels.overview
@@ -196,7 +307,8 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
 
   const finish = (result: ActionResult) => {
     if (result.toast) {
-      toast(result.toast);
+      if (result.redirect) toastOnNextPage([result.toast]);
+      else toast(result.toast);
     }
 
     if (result.redirect) {
@@ -206,7 +318,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
     }
   };
 
-  const run = async (action: ListAction, ids: string[], data: Record<string, string> = {}) => {
+  const run = async (action: ListAction, ids: string[], data: Record<string, string> = {}, files: Record<string, File[]> = {}) => {
     if (!action.endpoint) {
       return;
     }
@@ -214,16 +326,16 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
     setBusy(true);
 
     try {
-      const result = await postAction(action.endpoint, { ids, ...data });
+      const result = await postAction(action.endpoint, { ids, ...data }, files);
 
       if (result.status === 422 && action.form) {
-        setFormError(result.errors?.[action.form.field.name]?.[0]);
+        setFormErrors(Object.fromEntries(Object.entries(result.errors ?? {}).map(([field, messages]) => [field, messages[0]])));
 
         return;
       }
 
       setPending(null);
-      setFormError(undefined);
+      setFormErrors({});
       setSelected((current) => current.filter((id) => !ids.includes(id)));
       finish(result);
     } finally {
@@ -235,8 +347,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
     setBulkOpen(false);
 
     if (action.confirm || action.form) {
-      setFormValue(action.form?.field.value ?? "");
-      setFormError(undefined);
+      setFormErrors({});
       setPending({ action, ids });
     } else {
       void run(action, ids);
@@ -263,20 +374,79 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
       </button>
     );
 
-  const hasActions = spec.rows.some((row) => row.actions.length > 0);
-  const bulk = spec.bulkActions.length > 0;
+  const hasActions = !reordering && rows.some((row) => row.actions.length > 0);
+  const bulk = spec.bulkActions.length > 0 && !reordering;
+  const toggleable = spec.columns.some((column) => column.toggleable);
+  const hasRightTools = spec.search !== null || spec.filters.length > 0 || toggleable;
+  const footer = spec.total > 0 && !reordering;
+
+  const sortBy = (column: string) => {
+    // Filament: a new column sorts up, then down, then back to the table's default
+    const next = spec.sort?.column !== column ? `${column}:asc` : spec.sort.direction === "asc" ? `${column}:desc` : null;
+
+    go({ sort: next, page: null });
+  };
+
+  const toggleReordering = () => {
+    if (!reordering) {
+      setOrder(spec.rows.map((row) => row.id));
+      setSelected([]);
+    }
+
+    setReordering(!reordering);
+  };
+
+  const move = async (ids: string[]) => {
+    setOrder(ids);
+
+    if (spec.reorder) {
+      await postAction(spec.reorder.endpoint, { order: ids });
+      router.refresh();
+    }
+  };
 
   return (
     <div className="fi-ta">
-      <div className="fi-ta-ctn fi-ta-ctn-with-footer fi-ta-ctn-with-header">
+      <div className={`fi-ta-ctn${footer ? " fi-ta-ctn-with-footer" : ""} fi-ta-ctn-with-header`}>
         <div className="fi-ta-main">
           <div className="fi-ta-header-ctn">
+            {spec.header ? (
+              <div className="fi-ta-header fi-ta-header-adaptive-actions-position">
+                <div>
+                  <h2 className="fi-ta-header-heading">{spec.header.heading}</h2>
+                </div>
+                {spec.header.actions.length && !reordering ? (
+                  <div className="fi-ta-actions fi-align-start fi-wrapped">
+                    {spec.header.actions.map((action) => (
+                      <FiButton key={action.key} color={action.color ?? "primary"} onClick={() => start(action, [])}>
+                        {action.label}
+                      </FiButton>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="fi-ta-header-toolbar">
               <div className="fi-ta-actions fi-align-start fi-wrapped">
+                {spec.reorder && spec.rows.length > 0 ? (
+                  <button
+                    title={reordering ? spec.reorder.labels.disable : spec.reorder.labels.enable}
+                    aria-label={reordering ? spec.reorder.labels.disable : spec.reorder.labels.enable}
+                    type="button"
+                    className="fi-force-enabled fi-ac-icon-btn-action fi-icon-btn fi-size-md"
+                    onClick={toggleReordering}
+                  >
+                    <FiIcon name={reordering ? "m-check" : "m-arrows-up-down"} />
+                  </button>
+                ) : null}
                 {bulk && selected.length > 0 ? (
                   <div className="fi-dropdown" ref={bulkRef} style={{ position: "relative" }}>
                     <div className="fi-dropdown-trigger">
-                      <button type="button" className="fi-ac-btn-group fi-btn fi-size-md fi-labeled-from-sm" onClick={() => setBulkOpen(!bulkOpen)}>
+                      {/* Filament's icon-only twin, for narrow screens */}
+                      <button title={spec.labels.actions} type="button" className="fi-ac-btn-group fi-icon-btn fi-size-md" onClick={() => setBulkOpen(!bulkOpen)}>
+                        <FiIcon name="m-ellipsis-vertical" />
+                      </button>
+                      <button type="button" className="fi-ac-btn-group fi-btn fi-size-md fi-labeled-from-sm" aria-haspopup="menu" aria-expanded={bulkOpen} onClick={() => setBulkOpen(!bulkOpen)}>
                         <FiIcon name="m-ellipsis-vertical" />
                         {spec.labels.actions}
                       </button>
@@ -302,6 +472,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                   </div>
                 ) : null}
               </div>
+              {hasRightTools ? (
               <div>
                 {spec.search !== null ? (
                   <div className="fi-ta-search-field">
@@ -397,9 +568,76 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                     ) : null}
                   </div>
                 ) : null}
+                {toggleable ? (
+                  <div className="fi-dropdown fi-ta-col-manager-dropdown" ref={columnsRef} style={{ position: "relative" }}>
+                    <div className="fi-dropdown-trigger">
+                      <button
+                        title={spec.labels.columnManager}
+                        aria-label={spec.labels.columnManager}
+                        type="button"
+                        className="fi-force-enabled fi-ac-icon-btn-action fi-icon-btn fi-size-md"
+                        aria-haspopup="true"
+                        aria-expanded={columnsOpen}
+                        onClick={() => {
+                          setDraftColumns(shownColumns);
+                          setColumnsOpen(!columnsOpen);
+                        }}
+                      >
+                        <FiIcon name="m-view-columns" />
+                      </button>
+                    </div>
+                    {columnsOpen ? (
+                      <div className="fi-dropdown-panel fi-width-xs" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 20 }}>
+                        <div className="fi-ta-col-manager">
+                          <div className="fi-ta-col-manager-header">
+                            <h2 className="fi-ta-col-manager-heading">{spec.labels.columns}</h2>
+                            <div>
+                              <FiLinkAction color="danger" onClick={() => setDraftColumns(Object.fromEntries(spec.columns.map((column) => [column.name, column.toggleable !== "hidden"])))}>
+                                {spec.labels.resetColumns}
+                              </FiLinkAction>
+                            </div>
+                          </div>
+                          <div className="fi-ta-col-manager-group">
+                            {spec.columns.map((column) => (
+                              <div key={column.name} className="fi-ta-col-manager-item">
+                                <label className="fi-ta-col-manager-label" htmlFor={`fi-ta-col-manager-column-checkbox-${column.name}`}>
+                                  <input
+                                    type="checkbox"
+                                    className="fi-checkbox-input fi-valid"
+                                    id={`fi-ta-col-manager-column-checkbox-${column.name}`}
+                                    checked={draftColumns[column.name] !== false}
+                                    disabled={!column.toggleable}
+                                    onChange={(event) => setDraftColumns({ ...draftColumns, [column.name]: event.target.checked })}
+                                  />
+                                  <span>{column.label}</span>
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="fi-ta-col-manager-actions-ctn">
+                            <FiButton
+                              onClick={() => {
+                                saveShownColumns(draftColumns);
+                                setColumnsOpen(false);
+                              }}
+                            >
+                              {spec.labels.applyColumns}
+                            </FiButton>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
+              ) : null}
             </div>
           </div>
+          {reordering && spec.reorder ? (
+            <div role="status" aria-live="polite" className="fi-ta-reorder-indicator">
+              {spec.reorder.labels.indicator}
+            </div>
+          ) : null}
           {selected.length > 0 ? (
             <div role="status" className="fi-ta-selection-indicator">
               <div>
@@ -421,11 +659,12 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
           ) : null}
           <div className="fi-ta-content-ctn fi-fixed-positioning-context">
             <div role="status" aria-live="polite" aria-atomic="true" className="fi-sr-only">
-              {spec.rows.length ? `${spec.total} results` : "No results"}
+              {spec.rows.length ? `${spec.total} ${spec.total === 1 ? "result" : "results"}` : "No results"}
             </div>
             <table aria-label={spec.heading} className="fi-ta-table">
               <thead>
                 <tr>
+                  {reordering ? <th /> : null}
                   {bulk ? (
                     <th className="fi-ta-cell fi-ta-selection-cell">
                       <input
@@ -437,21 +676,89 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                       />
                     </th>
                   ) : null}
-                  {spec.columns.map((column) => (
-                    <th key={column.name} className={`fi-ta-header-cell fi-ta-header-cell-${column.className}${column.alignRight ? " fi-align-right" : ""}`}>
-                      {column.label}
-                    </th>
-                  ))}
+                  {columns.map((column) => {
+                    const sorted = spec.sort?.column === column.name;
+
+                    return (
+                      <th
+                        key={column.name}
+                        scope="col"
+                        aria-sort={column.sortable ? (sorted ? (spec.sort!.direction === "asc" ? "ascending" : "descending") : "none") : undefined}
+                        className={`fi-ta-header-cell fi-ta-header-cell-${column.className}${sorted ? " fi-ta-header-cell-sorted" : ""}${column.alignRight ? " fi-align-right" : ""}`}
+                      >
+                        {column.sortable && !reordering ? (
+                          <button type="button" className="fi-ta-header-cell-sort-btn" onClick={() => sortBy(column.name)}>
+                            {column.label}
+                            <FiIcon name={sorted && spec.sort!.direction === "asc" ? "m-chevron-up" : "m-chevron-down"} />
+                          </button>
+                        ) : (
+                          column.label
+                        )}
+                      </th>
+                    );
+                  })}
                   {hasActions ? <th aria-label={spec.labels.actionsColumn} className="fi-ta-actions-header-cell fi-ta-empty-header-cell" /> : null}
                 </tr>
               </thead>
-              {spec.rows.length ? (
+              {rows.length ? (
                 <tbody className="fi-ta-records">
-                  {spec.rows.map((row) => {
+                  {rows.map((row, index) => {
                     const isSelected = selected.includes(row.id);
+                    const reorderLabel = (text: string) =>
+                      text.replace(":label", row.title ?? row.id).replace(":position", String(index + 1)).replace(":count", String(rows.length));
 
                     return (
-                      <tr key={row.id} className={`fi-ta-row${row.url ? " fi-clickable" : ""}${isSelected ? " fi-selected" : ""}`}>
+                      <tr
+                        key={row.id}
+                        className={`fi-ta-row${row.url && !reordering ? " fi-clickable" : ""}${isSelected ? " fi-selected" : ""}`}
+                        draggable={reordering}
+                        onDragStart={() => setDragging(row.id)}
+                        onDragOver={(event) => {
+                          if (!dragging || dragging === row.id) {
+                            return;
+                          }
+
+                          event.preventDefault();
+                          setOrder((current) => {
+                            const without = current.filter((id) => id !== dragging);
+                            const at = without.indexOf(row.id);
+
+                            return [...without.slice(0, at + (current.indexOf(dragging) < current.indexOf(row.id) ? 1 : 0)), dragging, ...without.slice(at + (current.indexOf(dragging) < current.indexOf(row.id) ? 1 : 0))];
+                          });
+                        }}
+                        onDragEnd={() => {
+                          setDragging(null);
+                          void move(order);
+                        }}
+                      >
+                        {reordering && spec.reorder ? (
+                          <td className="fi-ta-cell">
+                            <button aria-hidden="true" tabIndex={-1} className="fi-ta-reorder-handle fi-icon-btn" type="button">
+                              <FiIcon name="m-bars-2" />
+                            </button>
+                            <span id={`table-reorder-${row.id}`} className="fi-sr-only">
+                              {reorderLabel(spec.reorder.labels.position)}
+                            </span>
+                            <div className="fi-sr-only">
+                              <button
+                                type="button"
+                                aria-describedby={`table-reorder-${row.id}`}
+                                disabled={index === 0}
+                                onClick={() => void move([...order.slice(0, index - 1), row.id, order[index - 1], ...order.slice(index + 1)])}
+                              >
+                                {reorderLabel(spec.reorder.labels.moveUp)}
+                              </button>
+                              <button
+                                type="button"
+                                aria-describedby={`table-reorder-${row.id}`}
+                                disabled={index === rows.length - 1}
+                                onClick={() => void move([...order.slice(0, index), order[index + 1], row.id, ...order.slice(index + 2)])}
+                              >
+                                {reorderLabel(spec.reorder.labels.moveDown)}
+                              </button>
+                            </div>
+                          </td>
+                        ) : null}
                         {bulk ? (
                           <td className="fi-ta-cell fi-ta-selection-cell">
                             <input
@@ -464,9 +771,9 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                             />
                           </td>
                         ) : null}
-                        {spec.columns.map((column) => (
+                        {columns.map((column) => (
                           <td key={column.name} className={`fi-ta-cell fi-ta-cell-${column.className}${column.alignRight ? " fi-align-right" : ""}`}>
-                            {row.url ? (
+                            {row.url && !reordering ? (
                               <a href={row.url} className="fi-ta-col">
                                 <Cell cell={row.cells[column.name]} />
                               </a>
@@ -489,7 +796,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
               ) : null}
             </table>
           </div>
-          {spec.rows.length ? null : (
+          {rows.length ? null : (
             <div className="fi-ta-empty-state" role="status">
               <div className="fi-ta-empty-state-content">
                 <div className="fi-ta-empty-state-icon-bg">
@@ -499,11 +806,10 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
               </div>
             </div>
           )}
-          {spec.total > 0 ? (
-            <div className="fi-ta-footer">
+          {footer ? (
               <nav aria-label={spec.labels.pagination} className="fi-pagination">
-                {spec.page > 1 ? (
-                  <FiButton color="gray" className="fi-pagination-previous-btn" onClick={() => go({ page: String(spec.page - 1) })}>
+                {paging.page > 1 ? (
+                  <FiButton color="gray" className="fi-pagination-previous-btn" onClick={() => go({ page: String(paging.page - 1) })}>
                     {spec.labels.previous}
                   </FiButton>
                 ) : null}
@@ -518,7 +824,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                           </div>
                         )}
                         <div className="fi-input-wrp-content-ctn">
-                          <select className="fi-select-input" value={spec.perPage} onChange={(event) => go({ perPage: event.target.value === "10" ? null : event.target.value, page: null })}>
+                          <select className="fi-select-input" value={paging.perPage} onChange={(event) => go({ perPage: event.target.value === "10" ? null : event.target.value, page: null })}>
                             {[5, 10, 25, 50].map((option) => (
                               <option key={option} value={option}>
                                 {option}
@@ -531,21 +837,21 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                     </label>
                   ))}
                 </div>
-                {spec.page < lastPage ? (
-                  <FiButton color="gray" className="fi-pagination-next-btn" onClick={() => go({ page: String(spec.page + 1) })}>
+                {paging.page < lastPage ? (
+                  <FiButton color="gray" className="fi-pagination-next-btn" onClick={() => go({ page: String(paging.page + 1) })}>
                     {spec.labels.next}
                   </FiButton>
                 ) : null}
                 {lastPage > 1 ? (
                   <ol className="fi-pagination-items">
-                    {spec.page > 1 ? (
+                    {paging.page > 1 ? (
                       <li className="fi-pagination-item">
-                        <button aria-label={spec.labels.previous} type="button" className="fi-pagination-item-btn" onClick={() => go({ page: String(spec.page - 1) })}>
+                        <button aria-label={spec.labels.previous} type="button" className="fi-pagination-item-btn" onClick={() => go({ page: String(paging.page - 1) })}>
                           <FiIcon name="m-chevron-left" className="fi-pagination-item-icon" />
                         </button>
                       </li>
                     ) : null}
-                    {pageElements(spec.page, lastPage).map((element, index) =>
+                    {pageElements(paging.page, lastPage).map((element, index) =>
                       element === "..." ? (
                         <li key={`gap-${index}`} className="fi-pagination-item fi-disabled">
                           <button aria-hidden="true" disabled type="button" className="fi-pagination-item-btn">
@@ -553,16 +859,16 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                           </button>
                         </li>
                       ) : (
-                        <li key={element} className={`fi-pagination-item${element === spec.page ? " fi-active" : ""}`}>
-                          <button aria-current={element === spec.page ? "page" : undefined} type="button" className="fi-pagination-item-btn" onClick={() => go({ page: element === 1 ? null : String(element) })}>
+                        <li key={element} className={`fi-pagination-item${element === paging.page ? " fi-active" : ""}`}>
+                          <button aria-current={element === paging.page ? "page" : undefined} type="button" className="fi-pagination-item-btn" onClick={() => go({ page: element === 1 ? null : String(element) })}>
                             <span className="fi-pagination-item-label">{element}</span>
                           </button>
                         </li>
                       ),
                     )}
-                    {spec.page < lastPage ? (
+                    {paging.page < lastPage ? (
                       <li className="fi-pagination-item">
-                        <button aria-label={spec.labels.next} type="button" className="fi-pagination-item-btn" onClick={() => go({ page: String(spec.page + 1) })}>
+                        <button aria-label={spec.labels.next} type="button" className="fi-pagination-item-btn" onClick={() => go({ page: String(paging.page + 1) })}>
                           <FiIcon name="m-chevron-right" className="fi-pagination-item-icon" />
                         </button>
                       </li>
@@ -570,7 +876,6 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                   </ol>
                 ) : null}
               </nav>
-            </div>
           ) : null}
         </div>
       </div>
@@ -588,34 +893,14 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
         />
       ) : null}
       {pending?.action.form ? (
-        <FiModal
-          open
-          onClose={() => setPending(null)}
-          heading={pending.action.form.heading}
-          width="4xl"
+        <FiActionFormModal
+          form={pending.action.form}
+          busy={busy}
+          errors={formErrors}
           closeLabel={spec.labels.close}
-          onSubmit={() => void run(pending.action, pending.ids, { [pending.action.form!.field.name]: formValue })}
-          footer={
-            <>
-              <FiButton type="submit" loading={busy} wrapLabel>
-                {pending.action.form.submitLabel}
-              </FiButton>
-              <FiButton color="gray" onClick={() => setPending(null)}>
-                {pending.action.form.cancelLabel}
-              </FiButton>
-            </>
-          }
-        >
-          <FiTextField
-            id={`mountedActionSchema0.${pending.action.form.field.name}`}
-            label={pending.action.form.field.label}
-            required={pending.action.form.field.required}
-            value={formValue}
-            onChange={setFormValue}
-            error={formError}
-            autoFocus
-          />
-        </FiModal>
+          onClose={() => setPending(null)}
+          onSubmit={(values, files) => void run(pending.action, pending.ids, values, files)}
+        />
       ) : null}
     </div>
   );

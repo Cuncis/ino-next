@@ -311,8 +311,10 @@ test("the list: search, filters and paging, and the global search", async ({ pag
 
   const groups = (await (await page.request.get(`/form/admin/cari?q=${paid.number}`)).json()).groups;
 
-  expect(groups.map((group: { label: string }) => group.label)).toEqual(["Pesanan", "Pengambilan"]);
-  expect(groups[0].results[0]).toMatchObject({ title: paid.number, url: `/admin/pesanan/${paid.id}` });
+  // every resource titled by the order number, in Filament's order (Invoices, Orders, Pickups)
+  expect(groups.map((group: { label: string }) => group.label)).toEqual(["Faktur", "Pesanan", "Pengambilan"]);
+  expect(groups[0].results[0]).toMatchObject({ title: paid.number, url: `/admin/faktur/${paid.id}` });
+  expect(groups[1].results[0]).toMatchObject({ title: paid.number, url: `/admin/pesanan/${paid.id}` });
 });
 
 test("who may do what: branch staff see their branch, other roles are refused", async ({ page, browser }) => {

@@ -20,7 +20,7 @@ type Common = { name: string; label: string; required?: boolean; helper?: string
 
 export type FormFieldSpec =
   | (Common & { kind: "text"; inputType?: "text" | "email" | "tel"; maxLength?: number; placeholder?: string })
-  | (Common & { kind: "number"; integer?: boolean })
+  | (Common & { kind: "number"; integer?: boolean; min?: number; max?: number })
   | (Common & { kind: "select"; options: SelectOption[]; placeholder: string | null })
   | (Common & { kind: "searchable"; options: SelectOption[] })
   | (Common & { kind: "textarea"; rows?: number; maxLength?: number; placeholder?: string })
@@ -184,7 +184,7 @@ export function ResourceForm({
       case "text":
         return <FiInput {...common} type={field.inputType ?? "text"} maxLength={field.maxLength} placeholder={field.placeholder} value={text} onChange={(value) => set(field.name, value)} />;
       case "number":
-        return <FiInput {...common} type="number" integer={field.integer} value={text} onChange={(value) => set(field.name, value)} />;
+        return <FiInput {...common} type="number" integer={field.integer} min={field.min} max={field.max} value={text} onChange={(value) => set(field.name, value)} />;
       case "select":
         return <FiNativeSelect {...common} options={field.options} placeholder={field.placeholder} value={text} onChange={(value) => set(field.name, value)} />;
       case "searchable":

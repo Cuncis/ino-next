@@ -20,6 +20,8 @@ export type ListCell =
   | { kind: "image"; src: string }
   /** IconColumn ->boolean() */
   | { kind: "icon"; value: boolean; label: string }
+  /** `->placeholder('—')` on an empty value */
+  | { kind: "placeholder"; text: string }
   | { kind: "empty" };
 
 export type { ActionFormSpec };
@@ -129,6 +131,14 @@ function Cell({ cell }: { cell: ListCell | undefined }) {
     return (
       <div className={`fi-ta-text fi-ta-text-item fi-ta-text-has-badges${cell.alignRight ? " fi-align-right" : ""}`}>
         <FiBadge color={cell.color}>{cell.text}</FiBadge>
+      </div>
+    );
+  }
+
+  if (cell.kind === "placeholder") {
+    return (
+      <div className="fi-ta-text">
+        <p className="fi-ta-placeholder">{cell.text}</p>
       </div>
     );
   }

@@ -2,6 +2,7 @@ import { authorizes, can, loadStaffAccess, type StaffAccess } from "@/lib/permis
 import { errorPageResponse } from "@/server/error-page";
 import { CATALOG_PERMISSIONS, findAttribute, findCategory, findSupplier } from "./catalog-records";
 import { findAdminOrder, ORDER_PERMISSIONS } from "./orders";
+import { findInvoice, findTransfer, TRANSFER_PERMISSIONS } from "./finance-transfers";
 import { findAdminProduct, PRODUCT_PERMISSIONS } from "./products";
 import type { Staff } from "./staff-auth";
 
@@ -43,6 +44,18 @@ const RULES: Rule[] = [
   { pattern: /^\/admin\/produk\/impor$/, allowed: (access) => can(access, "Produk:Lihat") },
   { pattern: /^\/admin\/produk\/([^/]+)$/, allowed: (access) => authorizes(access, PRODUCT_PERMISSIONS, "view"), record: productExists },
   { pattern: /^\/admin\/produk\/([^/]+)\/edit$/, allowed: (access) => authorizes(access, PRODUCT_PERMISSIONS, "update"), record: productExists },
+  { pattern: /^\/admin\/inventaris\/stok$/, allowed: (access) => can(access, "Inventaris:Lihat") },
+  { pattern: /^\/admin\/inventaris\/matriks$/, allowed: (access) => can(access, "Inventaris:Lihat") },
+  { pattern: /^\/admin\/inventaris\/transfer$/, allowed: (access) => authorizes(access, TRANSFER_PERMISSIONS, "viewAny") },
+  { pattern: /^\/admin\/inventaris\/transfer\/create$/, allowed: (access) => authorizes(access, TRANSFER_PERMISSIONS, "create") },
+  {
+    pattern: /^\/admin\/inventaris\/transfer\/([^/]+)$/,
+    allowed: (access) => authorizes(access, TRANSFER_PERMISSIONS, "view"),
+    record: async (id, staff) => (await findTransfer(id, staff)) !== null,
+  },
+  { pattern: /^\/admin\/faktur$/, allowed: (access) => can(access, "Pesanan:Lihat") },
+  { pattern: /^\/admin\/faktur\/([^/]+)$/, allowed: (access) => can(access, "Pesanan:Lihat"), record: async (id, staff) => (await findInvoice(id, staff)) !== null },
+  { pattern: /^\/admin\/rekonsiliasi$/, allowed: (access) => can(access, "Pesanan:Lihat") },
   ...catalogRules("kategori", findCategory),
   ...catalogRules("atribut", findAttribute),
   ...catalogRules("pemasok", findSupplier),

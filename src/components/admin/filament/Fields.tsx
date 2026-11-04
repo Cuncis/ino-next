@@ -108,21 +108,57 @@ export function FiSearchableSelect({
   onChange,
   options,
   labels,
+  helper,
+  searchUrl,
 }: Omit<FieldShell, "children" | "wrapperClass"> & {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
-  labels: { placeholder: string; search: string; noResults: string; clear: string };
+  labels: { placeholder: string; search: string; noResults: string; clear: string; prompt?: string; searching?: string };
+  /** `->getSearchResultsUsing()`: options come from the server as the staff member types (`?search=`) */
+  searchUrl?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState("");
+  const [found, setFound] = useState<SelectOption[] | null>(null);
+  const [picked, setPicked] = useState<SelectOption | null>(null);
   const root = useRef<HTMLDivElement>(null);
-  const selected = options.find((option) => option.value === value);
+  const selected = options.find((option) => option.value === value) ?? (picked?.value === value ? picked : undefined);
   const shown = useMemo(() => {
+    if (searchUrl) {
+      return found ?? [];
+    }
+
     const needle = term.trim().toLowerCase();
 
     return needle ? options.filter((option) => option.label.toLowerCase().includes(needle)) : options;
-  }, [options, term]);
+  }, [options, term, searchUrl, found]);
+
+  // a server-searched select asks again a moment after each keystroke
+  useEffect(() => {
+    if (!searchUrl) {
+      return;
+    }
+
+    if (term.trim() === "") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing typed: back to the prompt
+      setFound(null);
+
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      const response = await fetch(`${searchUrl}${searchUrl.includes("?") ? "&" : "?"}search=${encodeURIComponent(term)}`, { signal: controller.signal, credentials: "same-origin" }).catch(() => null);
+
+      setFound(response?.ok ? ((await response.json()) as SelectOption[]) : []);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [term, searchUrl]);
 
   useEffect(() => {
     if (!open) {
@@ -137,7 +173,7 @@ export function FiSearchableSelect({
   }, [open]);
 
   return (
-    <FiField id={id} label={label} required={required} error={error} wrapperClass="fi-fo-select-wrp">
+    <FiField id={id} label={label} required={required} error={error} helper={helper} wrapperClass="fi-fo-select-wrp">
       <div className={`fi-fo-select fi-input-wrp${error ? " fi-invalid" : ""}`}>
         <div className="fi-input-wrp-content-ctn">
           <div className="fi-select-input" ref={root}>
@@ -162,6 +198,7 @@ export function FiSearchableSelect({
                             role="option"
                             aria-selected={option.value === value}
                             onClick={() => {
+                              setPicked(option);
                               onChange(option.value);
                               setOpen(false);
                               setTerm("");
@@ -172,7 +209,7 @@ export function FiSearchableSelect({
                         ))}
                       </ul>
                     ) : (
-                      <div className="fi-select-input-message">{labels.noResults}</div>
+                      <div className="fi-select-input-message">{searchUrl && term.trim() === "" ? (labels.prompt ?? labels.search) : labels.noResults}</div>
                     )}
                   </div>
                 ) : null}
@@ -206,7 +243,12 @@ export function FiInput({
   maxLength,
   integer = false,
   autoFocus = false,
+  min,
+  max,
 }: Omit<FieldShell, "children" | "wrapperClass"> & {
+  /** `->minValue()` / `->maxValue()`, which Filament also gives the input */
+  min?: number;
+  max?: number;
   value: string;
   onChange: (value: string) => void;
   type?: "text" | "number" | "email" | "tel";
@@ -227,6 +269,8 @@ export function FiInput({
             type={type}
             inputMode={type === "number" ? (integer ? "numeric" : "decimal") : undefined}
             step={type === "number" ? (integer ? 1 : "any") : undefined}
+            min={min}
+            max={max}
             maxLength={maxLength}
             placeholder={placeholder}
             autoFocus={autoFocus}
@@ -261,6 +305,7 @@ export function FiTextarea({
           <div>
             <textarea
               id={id}
+              required={required}
               rows={rows}
               maxLength={maxLength}
               placeholder={placeholder}
@@ -342,6 +387,19 @@ export function FiTagsInput({
               </div>
             ) : null}
           </div>
+        </div>
+      </div>
+    </FiField>
+  );
+}
+
+/** Filament's DatePicker (native): a browser date input. */
+export function FiDateInput({ id, label, required, error, helper, value, onChange }: Omit<FieldShell, "children" | "wrapperClass"> & { value: string; onChange: (value: string) => void }) {
+  return (
+    <FiField id={id} label={label} required={required} error={error} helper={helper}>
+      <div className={`fi-fo-date-time-picker fi-input-wrp${error ? " fi-invalid" : ""}`}>
+        <div className="fi-input-wrp-content-ctn">
+          <input id={id} required={required} type="date" className="fi-input" value={value} aria-describedby={describedBy(id, helper, error)} onChange={(event) => onChange(event.target.value)} />
         </div>
       </div>
     </FiField>

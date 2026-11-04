@@ -1,12 +1,13 @@
 import { and, asc, isNull, sql } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
-import { attributes, categories, db, orders, products, suppliers } from "@/db";
+import { attributes, categories, db, orders, payments, products, stockTransfers, suppliers } from "@/db";
 import { translate, type AdminLocale } from "@/lib/admin-i18n";
-import { branchScope } from "@/lib/branch-scope";
+import { branchScope, transferBranchScope } from "@/lib/branch-scope";
 import { authorizes, can, type StaffAccess } from "@/lib/permissions";
 import { CATALOG_PERMISSIONS } from "./catalog-records";
 import { ORDER_PERMISSIONS, searchWords } from "./orders";
 import { PRODUCT_PERMISSIONS } from "./products";
+import { TRANSFER_PERMISSIONS } from "./finance-transfers";
 import type { Staff } from "./staff-auth";
 
 /**
@@ -66,6 +67,41 @@ const PROVIDERS: Provider[] = [
   catalogProvider("Attributes", "plural:Atribut", "atribut", attributes),
   catalogProvider("Categories", "plural:Kategori", "kategori", categories),
   catalogProvider("Suppliers", "plural:Pemasok", "pemasok", suppliers),
+  {
+    folder: "Invoices",
+    label: "plural:Faktur",
+    allowed: (access) => can(access, "Pesanan:Lihat"),
+    search: async (term, staff) => (await orderNumbers(term, staff)).map((order) => ({ title: order.number, url: `/admin/faktur/${order.id}` })),
+  },
+  {
+    // a payment has no page of its own: the list with its view action (Filament's fallback)
+    folder: "Reconciliations",
+    label: "plural:Rekonsiliasi",
+    allowed: (access) => can(access, "Pesanan:Lihat"),
+    search: async (term) =>
+      (
+        await db
+          .select({ id: payments.id, invoiceNumber: payments.invoiceNumber })
+          .from(payments)
+          .where(searchWords(term, [sql`${payments.invoiceNumber}`]))
+          .orderBy(asc(payments.id))
+          .limit(LIMIT)
+      ).map((payment) => ({ title: payment.invoiceNumber, url: `/admin/rekonsiliasi?tableAction=view&tableActionRecord=${payment.id}` })),
+  },
+  {
+    folder: "StockTransfers",
+    label: "plural:Transfer",
+    allowed: (access) => authorizes(access, TRANSFER_PERMISSIONS, "viewAny"),
+    search: async (term, staff) =>
+      (
+        await db
+          .select({ id: stockTransfers.id, code: stockTransfers.code })
+          .from(stockTransfers)
+          .where(and(transferBranchScope(staff), searchWords(term, [sql`${stockTransfers.code}`])))
+          .orderBy(asc(stockTransfers.id))
+          .limit(LIMIT)
+      ).map((transfer) => ({ title: transfer.code, url: `/admin/inventaris/transfer/${transfer.id}` })),
+  },
   {
     folder: "Products",
     label: "plural:Produk",

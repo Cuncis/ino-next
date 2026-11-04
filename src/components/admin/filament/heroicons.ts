@@ -496,5 +496,12 @@ export const HEROICONS: Record<string, { viewBox: string; fill: string | null; s
   "stroke": "currentColor",
   "strokeWidth": "1.5",
   "body": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75\"/>"
+ },
+ "o-plus": {
+  "viewBox": "0 0 24 24",
+  "fill": "none",
+  "stroke": "currentColor",
+  "strokeWidth": "1.5",
+  "body": "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 4.5v15m7.5-7.5h-15\"/>"
  }
 };

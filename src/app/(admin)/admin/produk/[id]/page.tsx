@@ -6,7 +6,10 @@ import { FiBadgeEntry, FiGrid, FiGridCol, FiRepeatableEntry, FiSection, FiTextEn
 import { FiPage, FiPageHeader } from "@/components/admin/filament/ui";
 import { DRUG_CLASSES, PRODUCT_STATUSES, toLabel } from "@/lib/admin-options";
 import { rupiah } from "@/lib/money";
-import { authorizes } from "@/lib/permissions";
+import type { ListAction } from "@/components/admin/filament/ListTable";
+import { authorizes, can } from "@/lib/permissions";
+import { bookableBranches, quantitiesByBranch } from "@/server/admin/stock";
+import { actionForm, adjustFields, receiveFields, selectLabels } from "@/server/admin/stock-forms";
 import { productImagesSpec } from "@/server/admin/product-images-table";
 import { findAdminProduct, PRODUCT_PERMISSIONS, productDetail } from "@/server/admin/products";
 import { ProductImagesTable } from "@/views/admin/ProductImagesTable";
@@ -27,6 +30,52 @@ export default async function Page({ params }: PageProps<"/admin/produk/[id]">) 
   }
 
   const detail = await productDetail(product, staff);
+  // the stock buttons use the same forms and code as Inventaris > Stok, asking which branch
+  const ownBranch = staff.branchId === null ? "" : String(staff.branchId);
+  const actions: ListAction[] = [
+    ...(can(access, "Inventaris:Terima Barang")
+      ? [
+          {
+            key: "terimaBarang",
+            label: t("Terima Barang"),
+            icon: "o-inbox-arrow-down",
+            color: "gray" as const,
+            endpoint: `/admin/produk/${product.id}/stok/terima-barang`,
+            form: actionForm(
+              locale,
+              `${t("Terima Barang")}: ${product.name}`,
+              [{ kind: "searchable" as const, name: "branchId", label: t("Cabang"), required: true, options: await bookableBranches(staff), value: ownBranch, labels: selectLabels(locale) }, ...receiveFields(locale)],
+              { description: t("Tambahkan batch baru ke stok produk ini. Untuk cabang yang belum punya stok produk ini, ini sekaligus menjadi stok awalnya.") },
+            ),
+          },
+        ]
+      : []),
+    ...(can(access, "Inventaris:Sesuaikan Stok")
+      ? [
+          {
+            key: "sesuaikanStok",
+            label: t("Sesuaikan Stok"),
+            icon: "o-adjustments-horizontal",
+            color: "gray" as const,
+            endpoint: `/admin/produk/${product.id}/stok/sesuaikan-stok`,
+            form: actionForm(locale, `${t("Sesuaikan Stok")}: ${product.name}`, [
+              {
+                kind: "searchable" as const,
+                name: "branchId",
+                label: t("Cabang"),
+                required: true,
+                options: await bookableBranches(staff, product.id),
+                value: ownBranch,
+                helper: t("Hanya cabang yang sudah punya stok produk ini. Untuk stok pertama, pakai Terima Barang."),
+                labels: selectLabels(locale),
+              },
+              ...adjustFields(locale, await quantitiesByBranch(product.id), "branchId"),
+            ]),
+          },
+        ]
+      : []),
+    ...(authorizes(access, PRODUCT_PERMISSIONS, "update") ? [{ key: "edit", label: t("Ubah"), icon: "", href: `/admin/produk/${product.id}/edit` }] : []),
+  ];
   const drugClass = toLabel(DRUG_CLASSES, product.drugClass);
 
   return (
@@ -36,11 +85,7 @@ export default async function Page({ params }: PageProps<"/admin/produk/[id]">) 
           <FiPageHeader
             breadcrumbs={[{ label: t("plural:Produk"), url: "/admin/produk" }, { label: product.name, url: `/admin/produk/${product.id}` }, { label: t("Lihat") }]}
             heading={t("Lihat :label", { label: product.name })}
-            actions={
-              authorizes(access, PRODUCT_PERMISSIONS, "update") ? (
-                <FiHeaderActions actions={[{ key: "edit", label: t("Ubah"), icon: "", href: `/admin/produk/${product.id}/edit` }]} labels={{ close: t("Tutup"), cancel: t("Batal") }} />
-              ) : null
-            }
+            actions={actions.length ? <FiHeaderActions actions={actions} labels={{ close: t("Tutup"), cancel: t("Batal") }} /> : null}
           />
         }
       >

@@ -241,6 +241,22 @@ function runValidation<T extends Record<string, unknown>>(
         case "in":
           if (!parameters.includes(String(value))) fail(rule, message(rule, field, attributes, {}));
           break;
+        case "not_in":
+          if (parameters.includes(String(value))) fail(rule, message(rule, field, attributes, {}));
+          break;
+        case "different":
+          if (String(value) === String(valueAt(input, parameters[0]).value)) fail(rule, message(rule, field, attributes, { other: attributeName(parameters[0], attributes) }));
+          break;
+        case "after": {
+          // only `after:today` (a date strictly after today in Jakarta), shown as Laravel shows it
+          if (parameters[0] !== "today") throw new Error(`after:${parameters[0]} is not supported yet`);
+
+          const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+          const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? String(value) : null;
+
+          if (date === null || date <= today) fail(rule, message(rule, field, attributes, { date: "today" }));
+          break;
+        }
         case "gt": {
           // Laravel's validateGt against another field: numbers compare as numbers, and an
           // empty other field (or a value of another type) never passes

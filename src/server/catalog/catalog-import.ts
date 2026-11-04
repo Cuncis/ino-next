@@ -698,3 +698,40 @@ function stockCells(cells: Record<string, string>): Record<string, string> {
     is_listed: cells.is_listed ?? "",
   };
 }
+
+/* ---------------- stok.csv on its own (Inventaris > Stok) ---------------- */
+
+export const STOCK_FILE_COLUMNS = ["sku", "branch_code", "batch_number", "expires_at", "quantity", "is_listed"] as const;
+
+/** StockTemplate::sampleRows(). */
+export const STOCK_SAMPLE_ROWS: Record<string, string>[] = [
+  { sku: "PRD-001", branch_code: "CB-001", batch_number: "BN2401A", expires_at: "2027-06-30", quantity: "120", is_listed: "1" },
+  { sku: "PRD-001", branch_code: "CB-001", batch_number: "", expires_at: "2027-12-31", quantity: "80", is_listed: "" },
+];
+
+/**
+ * StockTemplateImporter::import(): `stok.csv` (a `branch` column is read as `branch_code`).
+ * Each product + branch group is the whole list of its batches. Throws CsvError for a
+ * file it can't read at all.
+ */
+export async function importStockFile(options: { content: string; fileName: string; restrictToBranchId: number | null; userId: number | null; locale: AdminLocale }): Promise<ImportSummary> {
+  const { header, rows } = readCsvTable(options.content, { branch: "branch_code" });
+
+  assertColumns(header, ["sku", "branch_code", "expires_at", "quantity"]);
+
+  const summary: ImportSummary = { kind: "produk-stok", created: 0, updated: 0, warnedInactive: 0, imagesFailed: [], groups: 0, batches: 0, zeroed: 0, failed: [] };
+  const stock = new StockTemplateImporter(options.restrictToBranchId, options.userId, options.locale);
+  const groups = new Map<string, StockGroup>();
+
+  for (const { line, cells } of rows) {
+    try {
+      await stock.collect(cells, header, groups, line);
+    } catch (error) {
+      summary.failed.push({ row: line, message: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  await stock.applyGroups(groups, summary, `Impor stok CSV (${options.fileName})`);
+
+  return summary;
+}

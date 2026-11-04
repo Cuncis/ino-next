@@ -49,14 +49,16 @@ export async function productFormBlocks(locale: AdminLocale, mode: "create" | "e
           options: choices(locale, SELLABLE_DRUG_CLASSES),
           helper: t("Apotek ini tidak menjual obat keras atau obat yang butuh resep dokter."),
         },
-        { kind: "number", name: "price", label: t("Harga Jual"), required: true, integer: true },
-        { kind: "number", name: "old_price", label: t("Harga Coret"), integer: true },
+        { kind: "number", name: "price", label: t("Harga Jual"), required: true, integer: true, min: 0, max: 1000000000 },
+        { kind: "number", name: "old_price", label: t("Harga Coret"), integer: true, min: 0, max: 1000000000 },
         {
           kind: "number",
           name: "max_qty_per_order",
           label: t("Maks. pembelian per transaksi"),
           required: true,
           integer: true,
+          min: 1,
+          max: 65535,
           helper: t("Pembeli yang melewati batas ini melihat pesan: \":message\".", { message: t(OVER_LIMIT_MESSAGE) }),
         },
         {

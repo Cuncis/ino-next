@@ -2,7 +2,7 @@ import { and, asc, eq, gt, isNull } from "drizzle-orm";
 import { branches, branchStocks, categories, db, inventoryBatches, productImages, products } from "@/db";
 import { branchScope, type ScopedStaff } from "@/lib/branch-scope";
 import { CSV_BOM, csvLine } from "./csv";
-import { CATALOG_COLUMNS, catalogSampleRows } from "./catalog-import";
+import { CATALOG_COLUMNS, catalogSampleRows, STOCK_FILE_COLUMNS, STOCK_SAMPLE_ROWS } from "./catalog-import";
 
 /**
  * The `produk-stok.csv` download (App\Support\CsvTemplates\TemplateExporter::catalog):
@@ -108,4 +108,32 @@ export function exportStamp(now = new Date()): string {
   const jakarta = new Date(now.getTime() + 7 * 3600_000).toISOString();
 
   return `${jakarta.slice(0, 10).replaceAll("-", "")}-${jakarta.slice(11, 19).replaceAll(":", "")}`;
+}
+
+/**
+ * TemplateExporter::stock(): every batch in stock, by branch, product and expiry; only
+ * the staff member's branch for branch staff. A deleted product or branch is left out.
+ */
+export async function exportStock(staff: ScopedStaff): Promise<string> {
+  const rows = await db
+    .select({ batch: inventoryBatches, sku: products.sku, branchCode: branches.code })
+    .from(inventoryBatches)
+    .innerJoin(branches, and(eq(branches.id, inventoryBatches.branchId), isNull(branches.deletedAt)))
+    .innerJoin(products, and(eq(products.id, inventoryBatches.productId), isNull(products.deletedAt)))
+    .where(and(gt(inventoryBatches.quantity, 0), branchScope(inventoryBatches.branchId, staff)))
+    .orderBy(asc(inventoryBatches.branchId), asc(inventoryBatches.productId), asc(inventoryBatches.expiresAt), asc(inventoryBatches.id));
+  const settings = await db.select().from(branchStocks).where(branchScope(branchStocks.branchId, staff));
+  const listed = new Map(settings.map((row) => [`${row.branchId}-${row.productId}`, row.isListed ? 1 : 0]));
+  let out = CSV_BOM + csvLine([...STOCK_FILE_COLUMNS]);
+
+  for (const { batch, sku, branchCode } of rows) {
+    out += csvLine([sku, branchCode, batch.batchNumber, batch.expiresAt, batch.quantity, listed.get(`${batch.branchId}-${batch.productId}`) ?? null]);
+  }
+
+  return out;
+}
+
+/** TemplateExporter::stockSample(). */
+export function stockSample(): string {
+  return CSV_BOM + csvLine([...STOCK_FILE_COLUMNS]) + STOCK_SAMPLE_ROWS.map((row) => csvLine(STOCK_FILE_COLUMNS.map((column) => row[column] ?? ""))).join("");
 }

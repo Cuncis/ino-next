@@ -56,7 +56,10 @@ const ID: Record<string, string> = appId as Record<string, string>;
 export function translate(locale: AdminLocale, text: string, replace: Record<string, string | number> = {}): string {
   const found = (locale === "en" ? EN : ID)[text] ?? text;
 
-  return Object.entries(replace).reduce((result, [key, value]) => result.replaceAll(`:${key}`, String(value)), found);
+  // longest keys first, as Laravel does, so `:name` doesn't eat the start of `:name2`
+  return Object.entries(replace)
+    .sort(([a], [b]) => b.length - a.length)
+    .reduce((result, [key, value]) => result.replaceAll(`:${key}`, String(value)), found);
 }
 
 export function isAdminLocale(value: unknown): value is AdminLocale {
@@ -88,5 +91,7 @@ export function translateChoice(locale: AdminLocale, text: string, count: number
 
   chosen ??= (forms.length > 1 && count !== 1 ? forms[1] : forms[0]).replace(/^\s*(\{\d+\}|\[[^\]]*\])\s*/, "");
 
-  return Object.entries({ count, ...replace }).reduce((result, [key, value]) => result.replaceAll(`:${key}`, String(value)), chosen);
+  return Object.entries({ count, ...replace })
+    .sort(([a], [b]) => b.length - a.length)
+    .reduce((result, [key, value]) => result.replaceAll(`:${key}`, String(value)), chosen);
 }

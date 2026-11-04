@@ -57,7 +57,7 @@ export default async function Page({ searchParams }: PageProps<"/admin/produk">)
             form: {
               heading: t("Ubah Maks. Pembelian"),
               description: limitMessage,
-              fields: [{ kind: "number" as const, name: "max_qty_per_order", label: t("Maks. pembelian per transaksi"), required: true, integer: true, value: String(MAX_QUANTITY_PER_ORDER) }],
+              fields: [{ kind: "number" as const, name: "max_qty_per_order", label: t("Maks. pembelian per transaksi"), required: true, integer: true, min: 1, max: 65535, value: String(MAX_QUANTITY_PER_ORDER) }],
               submitLabel: t("Kirim"),
               cancelLabel: t("Batal"),
             },

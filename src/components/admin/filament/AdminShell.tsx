@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { FLASH_HEADER, parseFlash } from "@/lib/flash";
 import { translate, type AdminLocale } from "@/lib/admin-i18n";
-import { loadStaffAccess, type StaffAccess } from "@/lib/permissions";
+import { can, loadStaffAccess, type StaffAccess } from "@/lib/permissions";
+import { conversationsNeedingReply } from "@/server/admin/inbox";
 import { unreadNotificationCount } from "@/server/admin/database-notifications";
 import { adminNavigation, type NavItem } from "@/server/admin/navigation";
 import { currentStaff, type Staff } from "@/server/admin/staff-auth";
@@ -64,6 +65,15 @@ function SidebarItem({ item, grouped }: { item: NavItem; grouped?: { first: bool
           <FiIcon name={item.icon} size="lg" className="fi-sidebar-item-icon" />
         ) : null}
         <span className="fi-sidebar-item-label">{item.label}</span>
+        {item.badge ? (
+          <span className="fi-sidebar-item-badge-ctn">
+            <span className="fi-color fi-color-danger fi-text-color-700 dark:fi-text-color-200 fi-badge fi-size-md" title={item.badge.tooltip}>
+              <span className="fi-badge-label-ctn">
+                <span className="fi-badge-label">{item.badge.text}</span>
+              </span>
+            </span>
+          </span>
+        ) : null}
       </a>
       {item.children.length ? (
         <ul className="fi-sidebar-sub-group-items">
@@ -78,7 +88,9 @@ function SidebarItem({ item, grouped }: { item: NavItem; grouped?: { first: bool
 
 export async function AdminShell({ context, pathname, children }: { context: AdminContext; pathname: string; children: ReactNode }) {
   const { staff, access, locale, t } = context;
-  const navigation = adminNavigation(access, pathname, locale);
+  // ChatConversationResource::getNavigationBadge(): conversations waiting for a reply
+  const waiting = can(access, "Inbox:Lihat") ? await conversationsNeedingReply() : 0;
+  const navigation = adminNavigation(access, pathname, locale, waiting > 0 ? { "/admin/inbox": { text: String(waiting), color: "danger", tooltip: t("Percakapan yang belum dibalas") } } : {});
   const unread = await unreadNotificationCount(staff.id);
   const flash = parseFlash((await headers()).get(FLASH_HEADER));
   const labels = {

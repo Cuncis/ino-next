@@ -1,6 +1,9 @@
 import { and, asc, count, eq, gt } from "drizzle-orm";
 import { db, newsletterDeliveries, newsletters, subscribers } from "@/db";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { appUrl } from "@/lib/app-url";
+import { HTML_ENTITIES } from "@/lib/php-html-entities";
 import { sendMail } from "@/lib/mail";
 import { SUBSCRIBED, type Subscriber } from "./subscribers";
 
@@ -42,33 +45,100 @@ export function buttonHtml(config: { label?: unknown; url?: unknown }): string {
 </table>`;
 }
 
+/** Symfony HtmlSanitizer's StringSanitizer::encodeHtmlEntities(), which Filament's renderer ends with. */
+function sanitizerEncode(value: string): string {
+  return value
+    .replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&#34;", "'": "&#039;" })[character]!)
+    .replace(/[+=@`\uFF1C\uFF1E\uFF0B\uFF1D\uFF20\uFF40]/g, (character) =>
+      ({ "+": "&#43;", "=": "&#61;", "@": "&#64;", "`": "&#96;", "\uFF1C": "&#xFF1C;", "\uFF1E": "&#xFF1E;", "\uFF0B": "&#xFF0B;", "\uFF1D": "&#xFF1D;", "\uFF20": "&#xFF20;", "\uFF40": "&#xFF40;" })[character]!,
+    );
+}
+
+const NAMED_ENTITIES = new Map(Object.entries(HTML_ENTITIES).map(([character, entity]) => [entity, character]));
+
+/** The HTML parser's view of a text or attribute: every entity back to its character. */
+function decodeEntities(value: string): string {
+  return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]*);/gi, (entity, body: string) => {
+    if (body[0] === "#") {
+      const code = body[1] === "x" || body[1] === "X" ? Number.parseInt(body.slice(2), 16) : Number.parseInt(body.slice(1), 10);
+
+      return Number.isFinite(code) ? String.fromCodePoint(code) : entity;
+    }
+
+    return NAMED_ENTITIES.get(entity) ?? NAMED_ENTITIES.get(entity.toLowerCase()) ?? entity;
+  });
+}
+
+const VOID_ELEMENTS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
+
 /**
- * Editor content as the email shows it. Filament's renderer leaves the editor's HTML as
- * it is except for its own pieces: a custom block becomes its HTML (only the button
- * exists), and an uploaded image loads from the public disk. Then every site-relative
- * link and image is made absolute: an email has no "current site".
+ * The HTML as Symfony's sanitizer writes it back out: text and attribute values decoded
+ * and encoded again its way (`=` becomes &#61;, `"` &#34; …), void elements closed with " />".
+ */
+function sanitizerSerialize(html: string): string {
+  return html.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s=>\/]+(?:="[^"]*")?)*)\s*\/?>|([^<]+)/g, (match, closing: string, name: string, attributes: string, text: string | undefined) => {
+    if (text !== undefined) {
+      return sanitizerEncode(decodeEntities(text));
+    }
+
+    if (closing) {
+      return `</${name.toLowerCase()}>`;
+    }
+
+    const rendered = [...(attributes ?? "").matchAll(/\s+([^\s=>\/]+)(?:="([^"]*)")?/g)].map(([, attribute, value]) => ` ${attribute.toLowerCase()}="${sanitizerEncode(decodeEntities(value ?? ""))}"`).join("");
+
+    return VOID_ELEMENTS.has(name.toLowerCase()) ? `<${name.toLowerCase()}${rendered} />` : `<${name.toLowerCase()}${rendered}>`;
+  });
+}
+
+/** Whether the public disk holds this file (Filament only links an attachment that exists). */
+function publicFileExists(filePath: string): boolean {
+  const root = path.resolve(process.env.UPLOADS_PUBLIC_ROOT || path.join(/* turbopackIgnore: true */ process.cwd(), "public", "storage"));
+  const absolute = path.resolve(root, filePath);
+
+  return absolute.startsWith(root + path.sep) && existsSync(absolute);
+}
+
+/**
+ * Editor content as the email shows it (RichContentRenderer::toHtml()): an uploaded image
+ * loads from the public disk while its file is there (otherwise it loses its src), the
+ * HTML passes through the sanitizer's serialisation, a custom block becomes its own HTML
+ * (only the button exists), and every site-relative link and image is made absolute: an
+ * email has no "current site".
  */
 export function renderEditorContent(content: string | null): string {
-  const html = (content ?? "")
+  const blocks: string[] = [];
+  let html = (content ?? "")
+    .trim()
     .replace(/<div\b[^>]*\bdata-type="customBlock"[^>]*>[\s\S]*?<\/div>/gi, (block) => {
       const id = /\bdata-id="([^"]*)"/i.exec(block)?.[1];
       const configText = /\bdata-config="([^"]*)"/i.exec(block)?.[1];
+      let rendered = "";
 
-      if (id !== "button") {
-        return "";
+      if (id === "button") {
+        try {
+          rendered = buttonHtml(JSON.parse(decodeAttribute(configText ?? "{}")) as Record<string, unknown>);
+        } catch {
+          rendered = buttonHtml({});
+        }
       }
 
-      try {
-        return buttonHtml(JSON.parse(decodeAttribute(configText ?? "{}")) as Record<string, unknown>);
-      } catch {
-        return buttonHtml({});
-      }
+      blocks.push(rendered);
+
+      return `<x-block data-index="${blocks.length - 1}"></x-block>`;
     })
     .replace(/<img\b[^>]*\bdata-id="([^"]+)"[^>]*>/gi, (image, id: string) => {
-      const src = appUrl(`/storage/${decodeAttribute(id)}`);
+      const filePath = decodeAttribute(id);
+      const withoutSrc = image.replace(/\s+src="[^"]*"/i, "");
 
-      return /\bsrc="[^"]*"/i.test(image) ? image.replace(/\bsrc="[^"]*"/i, `src="${escapeHtml(src)}"`) : image.replace(/<img\b/i, `<img src="${escapeHtml(src)}"`);
+      if (!publicFileExists(filePath)) {
+        return withoutSrc;
+      }
+
+      return withoutSrc.replace(/<img\b/i, `<img src="${escapeHtml(appUrl(`/storage/${filePath}`))}"`);
     });
+
+  html = sanitizerSerialize(html).replace(/<x-block data-index="(\d+)"><\/x-block>/g, (_, index: string) => blocks[Number(index)]);
 
   return absoluteUrls(html);
 }

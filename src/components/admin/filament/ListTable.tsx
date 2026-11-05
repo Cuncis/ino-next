@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FiActionFormModal, postAction, type ActionFormSpec, type ActionResult } from "./ActionForm";
 import { FiIcon } from "./Icon";
 import { FiConfirmModal, toastOnNextPage, useFiToast } from "./Modal";
+import { FiPreviewModal } from "./PreviewModal";
 import { FiBadge, FiButton, FiLinkAction, type FiColor } from "./ui";
 
 /**
@@ -14,7 +15,13 @@ import { FiBadge, FiButton, FiLinkAction, type FiColor } from "./ui";
  * in the address (`?search=&filter_x=&page=&perPage=`), so the server renders the rows.
  */
 export type ListCell =
-  | { kind: "text"; text: string; weight?: "semibold" | "bold"; alignRight?: boolean; tooltip?: string }
+  | { kind: "text"; text: string; weight?: "semibold" | "bold" | "medium"; alignRight?: boolean; tooltip?: string; color?: FiColor }
+  /** a text with `->description()` under it */
+  | { kind: "described"; text: string; description: string; weight?: "medium" }
+  /** `->copyable()`: a click copies the text */
+  | { kind: "copyable"; text: string; copiedMessage: string }
+  /** a badge per item, with `->limitList()`'s "dan :count lainnya" */
+  | { kind: "badges"; items: string[]; color: FiColor; more?: string }
   | { kind: "badge"; text: string; color: FiColor; alignRight?: boolean }
   /** ImageColumn ->square() */
   | { kind: "image"; src: string }
@@ -36,13 +43,16 @@ export type ListAction = {
   endpoint?: string;
   confirm?: { heading: string; description: string; submitLabel: string; color: FiColor; icon?: string };
   form?: ActionFormSpec;
+  /** a modal showing the HTML this endpoint answers (`{ html }`), with only a "back" button */
+  preview?: { heading: string; backLabel: string };
   /** an ActionGroup: these actions in a dropdown under this button */
   items?: ListAction[];
 };
 
 export type ListRow = { id: string; url: string | null; cells: Record<string, ListCell>; actions: ListAction[]; /** names the row for screen readers while reordering */ title?: string };
 
-export type ListFilter = { name: string; label: string; options: { value: string; label: string }[]; value: string; defaultValue: string };
+/** a select filter, or (`checkbox`) a plain Filter that is on ("1") or off ("") */
+export type ListFilter = { name: string; label: string; options: { value: string; label: string }[]; value: string; defaultValue: string; checkbox?: boolean };
 
 export type ListColumn = {
   name: string;
@@ -62,7 +72,7 @@ export type ListSpec = {
   /** `?sort=column:direction`, for a sortable column */
   sort?: { column: string; direction: "asc" | "desc" } | null;
   /** a relation manager's table: its heading and header actions above the toolbar */
-  header?: { heading: string; actions: ListAction[] };
+  header?: { heading?: string; actions: ListAction[] };
   /** `->reorderable()`: drag rows into order, posting the ids in their new order */
   reorder?: { endpoint: string; labels: { enable: string; disable: string; indicator: string; position: string; moveUp: string; moveDown: string } };
   /** a relation manager pages its rows itself, not in the address */
@@ -75,6 +85,7 @@ export type ListSpec = {
   filters: ListFilter[];
   bulkActions: ListAction[];
   emptyHeading: string;
+  emptyDescription?: string;
   labels: Record<
     | "search"
     | "filters"
@@ -122,6 +133,24 @@ function pageElements(current: number, last: number): (number | "...")[] {
   return [1, 2, "...", current, "...", last - 1, last];
 }
 
+/** Follows a link that answers with a file, as Livewire's streamDownload() hands one over. */
+function download(url: string) {
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.click();
+}
+
+/** Filament's text shades per colour in a table cell (TextColumn ->color()). */
+const TEXT_SHADES: Record<FiColor, string> = {
+  gray: "fi-text-color-500 dark:fi-text-color-400",
+  success: "fi-text-color-700 dark:fi-text-color-600",
+  danger: "fi-text-color-600 dark:fi-text-color-400",
+  warning: "fi-text-color-600 dark:fi-text-color-400",
+  info: "fi-text-color-600 dark:fi-text-color-400",
+  primary: "fi-text-color-600 dark:fi-text-color-400",
+};
+
 function Cell({ cell }: { cell: ListCell | undefined }) {
   if (!cell || cell.kind === "empty") {
     return null;
@@ -132,6 +161,44 @@ function Cell({ cell }: { cell: ListCell | undefined }) {
       <div className={`fi-ta-text fi-ta-text-item fi-ta-text-has-badges${cell.alignRight ? " fi-align-right" : ""}`}>
         <FiBadge color={cell.color}>{cell.text}</FiBadge>
       </div>
+    );
+  }
+
+  if (cell.kind === "copyable") {
+    return <CopyableText text={cell.text} copiedMessage={cell.copiedMessage} />;
+  }
+
+  if (cell.kind === "described") {
+    return (
+      <div className="fi-ta-text fi-ta-text-has-descriptions">
+        <p className={`fi-ta-text-item fi-size-sm${cell.weight ? ` fi-font-${cell.weight}` : ""}`}>{cell.text}</p>
+        <p className="fi-ta-text-description">{cell.description}</p>
+      </div>
+    );
+  }
+
+  if (cell.kind === "badges") {
+    const items = cell.items.map((item, index) => (
+      <li key={index} className="fi-ta-text-item">
+        <FiBadge color={cell.color}>{item}</FiBadge>
+      </li>
+    ));
+
+    if (cell.items.length === 1) {
+      return (
+        <div className="fi-ta-text fi-ta-text-item fi-ta-text-has-badges">
+          <FiBadge color={cell.color}>{cell.items[0]}</FiBadge>
+        </div>
+      );
+    }
+
+    return cell.more ? (
+      <div className="fi-ta-text fi-ta-text-has-badges fi-ta-text-list-limited">
+        <ul>{items}</ul>
+        <div className="fi-ta-text-list-limited-message">{cell.more}</div>
+      </div>
+    ) : (
+      <ul className="fi-ta-text fi-ta-text-has-badges">{items}</ul>
     );
   }
 
@@ -169,11 +236,54 @@ function Cell({ cell }: { cell: ListCell | undefined }) {
     );
   }
 
+  if (cell.color) {
+    return (
+      <div className={`fi-ta-text fi-ta-text-item fi-size-sm fi-color fi-color-${cell.color} ${TEXT_SHADES[cell.color]}${cell.alignRight ? " fi-align-right" : ""}`}>
+        {cell.text}
+      </div>
+    );
+  }
+
   if (cell.weight) {
     return <div className={`fi-ta-text-item  fi-size-sm fi-font-${cell.weight} fi-ta-text${cell.alignRight ? " fi-align-right" : ""}`}>{cell.text}</div>;
   }
 
   return <div className={`fi-ta-text fi-ta-text-item fi-size-sm${cell.alignRight ? " fi-align-right" : ""}`}>{cell.text}</div>;
+}
+
+function CopyableText({ text, copiedMessage }: { text: string; copiedMessage: string }) {
+  const [status, setStatus] = useState("");
+  const copy = () => {
+    void navigator.clipboard?.writeText(text).then(() => {
+      setStatus(copiedMessage);
+      window.setTimeout(() => setStatus(""), 2000);
+    });
+  };
+
+  return (
+    <div className="fi-ta-text-item fi-size-sm fi-ta-text">
+      <span
+        className="fi-copyable"
+        role="button"
+        tabIndex={0}
+        aria-label={`Copy ${text}`}
+        title={status || undefined}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          copy();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") copy();
+        }}
+      >
+        {text}
+      </span>
+      <span className="fi-sr-only" role="status" aria-live="polite">
+        {status}
+      </span>
+    </div>
+  );
 }
 
 /** The columns picked in the column manager, remembered in this browser per table. */
@@ -225,6 +335,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(() => Object.fromEntries(spec.filters.map((filter) => [filter.name, filter.value])));
   const [pending, setPending] = useState<{ action: ListAction; ids: string[] } | null>(null);
+  const [preview, setPreview] = useState<{ heading: string; backLabel: string; html: string } | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [shownColumns, saveShownColumns] = useColumnChoice(spec);
@@ -356,6 +467,12 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
   const start = (action: ListAction, ids: string[]) => {
     setBulkOpen(false);
 
+    if (action.preview) {
+      void postAction(action.endpoint!, { saved: "1" }).then((result) => setPreview({ heading: action.preview!.heading, backLabel: action.preview!.backLabel, html: String((result as { html?: string }).html ?? "") }));
+
+      return;
+    }
+
     if (action.confirm || action.form) {
       setFormErrors({});
       setPending({ action, ids });
@@ -422,13 +539,21 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
           <div className="fi-ta-header-ctn">
             {spec.header ? (
               <div className="fi-ta-header fi-ta-header-adaptive-actions-position">
-                <div>
-                  <h2 className="fi-ta-header-heading">{spec.header.heading}</h2>
-                </div>
+                {spec.header.heading ? (
+                  <div>
+                    <h2 className="fi-ta-header-heading">{spec.header.heading}</h2>
+                  </div>
+                ) : null}
                 {spec.header.actions.length && !reordering ? (
                   <div className="fi-ta-actions fi-align-start fi-wrapped">
                     {spec.header.actions.map((action) => (
-                      <FiButton key={action.key} color={action.color ?? "primary"} onClick={() => start(action, [])}>
+                      <FiButton
+                        key={action.key}
+                        icon={action.icon || undefined}
+                        color={action.color ?? "primary"}
+                        // a download takes the list's search and filters along, like getFilteredTableQuery()
+                        onClick={() => (action.href ? download(`${action.href}?${searchParams.toString()}`) : start(action, []))}
+                      >
                         {action.label}
                       </FiButton>
                     ))}
@@ -532,6 +657,24 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                             {spec.filters.map((filter) => (
                               <div key={filter.name} className="fi-grid-col" style={{ "--col-span-default": "span 1 / span 1" } as React.CSSProperties}>
                                 <div className="fi-sc-component">
+                                  {filter.checkbox ? (
+                                    <div data-field-wrapper="" className="fi-fo-field">
+                                      <div className="fi-fo-field-label-col">
+                                        <div className="fi-fo-field-label-ctn">
+                                          <label htmlFor={`tableFiltersForm.${filter.name}.isActive`} className="fi-fo-field-label">
+                                            <input
+                                              type="checkbox"
+                                              id={`tableFiltersForm.${filter.name}.isActive`}
+                                              className="fi-checkbox-input fi-valid"
+                                              checked={draftFilters[filter.name] === "1"}
+                                              onChange={(event) => setDraftFilters({ ...draftFilters, [filter.name]: event.target.checked ? "1" : "" })}
+                                            />
+                                            <span className="fi-fo-field-label-content">{filter.label}</span>
+                                          </label>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
                                   <div data-field-wrapper="" className="fi-fo-select-wrp fi-fo-field">
                                     <div className="fi-fo-field-label-col">
                                       <div className="fi-fo-field-label-ctn">
@@ -559,6 +702,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                                       </div>
                                     </div>
                                   </div>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -675,7 +819,8 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
               <thead>
                 <tr>
                   {reordering ? <th /> : null}
-                  {bulk ? (
+                  {/* Filament leaves the select-all column out of an empty table */}
+                  {bulk && spec.rows.length ? (
                     <th className="fi-ta-cell fi-ta-selection-cell">
                       <input
                         aria-label="Select/deselect all items for bulk actions."
@@ -813,6 +958,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
                   <FiIcon name="o-x-mark" size="lg" />
                 </div>
                 <h3 className="fi-ta-empty-state-heading">{spec.emptyHeading}</h3>
+                {spec.emptyDescription ? <p className="fi-ta-empty-state-description">{spec.emptyDescription}</p> : null}
               </div>
             </div>
           )}
@@ -890,6 +1036,7 @@ export function FiListTable({ spec }: { spec: ListSpec }) {
         </div>
       </div>
 
+      {preview ? <FiPreviewModal heading={preview.heading} html={preview.html} backLabel={preview.backLabel} closeLabel={spec.labels.close} onClose={() => setPreview(null)} /> : null}
       {pending?.action.confirm ? (
         <FiConfirmModal
           open

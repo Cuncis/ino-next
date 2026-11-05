@@ -1,0 +1,511 @@
+[
+ {
+  "doc": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "heading",
+     "attrs": {
+      "textAlign": "start",
+      "level": 2
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Hi"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "start"
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        }
+       ],
+       "text": "b"
+      },
+      {
+       "type": "text",
+       "text": " & <x> \"q\" "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "link",
+         "attrs": {
+          "href": "https://a.com/?a=1&b=2",
+          "target": null,
+          "rel": null,
+          "class": null
+         }
+        }
+       ],
+       "text": "l"
+      }
+     ]
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "start"
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "one"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "customBlock",
+     "attrs": {
+      "config": {
+       "label": "Go",
+       "url": "https://x.com"
+      },
+      "id": "button"
+     }
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "start"
+     }
+    },
+    {
+     "type": "image",
+     "attrs": {
+      "src": "http://x/storage/a.png",
+      "alt": null,
+      "title": null,
+      "width": null,
+      "height": null,
+      "id": "newsletters/a.png"
+     }
+    }
+   ]
+  },
+  "html": "<h2>Hi</h2><p><strong>b</strong> &amp; &lt;x&gt; &quot;q&quot; <a href=\"https://a.com/?a=1&amp;b=2\">l</a></p><ul><li><p>one</p></li></ul><div data-type=\"customBlock\" data-config=\"{&quot;label&quot;:&quot;Go&quot;,&quot;url&quot;:&quot;https:\\/\\/x.com&quot;}\" data-id=\"button\"></div><p></p><img src=\"http://x/storage/a.png\" data-id=\"newsletters/a.png\">"
+ },
+ {
+  "doc": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "center"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "c"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "italic"
+        },
+        {
+         "type": "strike"
+        },
+        {
+         "type": "underline"
+        },
+        {
+         "type": "highlight"
+        },
+        {
+         "type": "subscript"
+        },
+        {
+         "type": "code"
+        }
+       ],
+       "text": "x"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "superscript"
+        },
+        {
+         "type": "link",
+         "attrs": {
+          "href": "https://a.com",
+          "target": "_blank",
+          "rel": "noopener",
+          "class": null
+         }
+        }
+       ],
+       "text": "y"
+      }
+     ]
+    },
+    {
+     "type": "orderedList",
+     "attrs": {
+      "start": 3,
+      "type": null
+     },
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "o"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "blockquote",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "q"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "codeBlock",
+     "attrs": {
+      "language": "js"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "a<b"
+      }
+     ]
+    },
+    {
+     "type": "codeBlock",
+     "attrs": {
+      "language": null
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "z"
+      }
+     ]
+    },
+    {
+     "type": "horizontalRule"
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "textAlign": "justify",
+      "level": 3
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "h"
+      }
+     ]
+    },
+    {
+     "type": "image",
+     "attrs": {
+      "src": "https://x/a.png",
+      "alt": "A \"b\" é",
+      "title": "T",
+      "width": 120,
+      "height": null,
+      "id": null
+     }
+    },
+    {
+     "type": "table",
+     "content": [
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableHeader",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1,
+          "colwidth": null
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "content": [
+            {
+             "type": "text",
+             "text": "H"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 2,
+          "rowspan": 1,
+          "colwidth": [
+           100
+          ]
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "content": [
+            {
+             "type": "text",
+             "text": "C"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "customBlock",
+     "attrs": {
+      "config": {
+       "label": "Ünï €",
+       "url": "https://x.com/a?b=1&c=é"
+      },
+      "id": "button"
+     }
+    },
+    {
+     "type": "orderedList",
+     "attrs": {
+      "start": 1
+     },
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "html": "<p style=\"text-align: center;\">c<br><em><s><u><mark><sub><code>x</code></sub></mark></u></s></em><sup><a href=\"https://a.com\" target=\"_blank\" rel=\"noopener\">y</a></sup></p><ol start=\"3\"><li><p>o</p></li></ol><blockquote><p>q</p></blockquote><pre><code class=\"language-js\">a&lt;b</code></pre><pre><code>z</code></pre><hr><h3 style=\"text-align: justify;\">h</h3><img src=\"https://x/a.png\" alt=\"A &quot;b&quot; &eacute;\" title=\"T\" width=\"120\" style=\"width: 120px;\"><table><tbody><tr><th rowspan=\"1\" colspan=\"1\"><p>H</p></th><td rowspan=\"1\" colspan=\"2\" data-colwidth=\"100\"><p>C</p></td></tr></tbody></table><div data-type=\"customBlock\" data-config=\"{&quot;label&quot;:&quot;\\u00dcn\\u00ef \\u20ac&quot;,&quot;url&quot;:&quot;https:\\/\\/x.com\\/a?b=1&amp;c=\\u00e9&quot;}\" data-id=\"button\"></div><ol start=\"1\"><li><p></p></li></ol>"
+ },
+ {
+  "doc": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        }
+       ],
+       "text": "a"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        },
+        {
+         "type": "italic"
+        }
+       ],
+       "text": "b"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "italic"
+        }
+       ],
+       "text": "c"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "link",
+         "attrs": {
+          "href": "javascript:alert(1)",
+          "target": null,
+          "rel": null,
+          "class": null
+         }
+        }
+       ],
+       "text": "j"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#ff0"
+         }
+        }
+       ],
+       "text": "h"
+      },
+      {
+       "type": "text",
+       "text": "x\ny it's"
+      }
+     ]
+    },
+    {
+     "type": "image",
+     "attrs": {
+      "src": "https://x/a.png",
+      "alt": "a",
+      "title": null,
+      "width": 100,
+      "height": 50,
+      "id": "newsletters/z.png"
+     }
+    },
+    {
+     "type": "table",
+     "content": [
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1,
+          "colwidth": [
+           100,
+           200
+          ]
+         },
+         "content": [
+          {
+           "type": "paragraph"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "customBlock",
+     "attrs": {
+      "config": {
+       "label": "😀 <b> 'x'",
+       "url": "https://x"
+      },
+      "id": "button"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "marks": [
+            {
+             "type": "link",
+             "attrs": {
+              "href": "mailto:a@b.c"
+             }
+            }
+           ],
+           "text": "m"
+          }
+         ]
+        },
+        {
+         "type": "bulletList",
+         "content": [
+          {
+           "type": "listItem",
+           "content": [
+            {
+             "type": "paragraph",
+             "content": [
+              {
+               "type": "text",
+               "text": "n"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "html": "<p><strong>a<em>b</em></strong><em>c</em><a>j</a><mark>h</mark>x\ny it&#039;s</p><img src=\"https://x/a.png\" alt=\"a\" width=\"100\" style=\"width: 100px; height: 50px;\" height=\"50\" data-id=\"newsletters/z.png\"><table><tbody><tr><td rowspan=\"1\" colspan=\"1\" data-colwidth=\"100,200\"><p></p></td></tr></tbody></table><div data-type=\"customBlock\" data-config=\"{&quot;label&quot;:&quot;\\ud83d\\ude00 &lt;b&gt; &#039;x&#039;&quot;,&quot;url&quot;:&quot;https:\\/\\/x&quot;}\" data-id=\"button\"></div><ul><li><p><a href=\"mailto:a@b.c\">m</a></p><ul><li><p>n</p></li></ul></li></ul>"
+ },
+ {
+  "doc": {
+   "type": "doc",
+   "content": []
+  },
+  "html": ""
+ }
+]

@@ -1,0 +1,114 @@
+[
+ {
+  "email": "a@b.co",
+  "valid": true
+ },
+ {
+  "email": "a@b",
+  "valid": false
+ },
+ {
+  "email": "a@b.c",
+  "valid": true
+ },
+ {
+  "email": "user.name+tag@example.com",
+  "valid": true
+ },
+ {
+  "email": "x@localhost",
+  "valid": false
+ },
+ {
+  "email": "a..b@c.com",
+  "valid": false
+ },
+ {
+  "email": ".a@c.com",
+  "valid": false
+ },
+ {
+  "email": "a.@c.com",
+  "valid": false
+ },
+ {
+  "email": "\"q\"@c.com",
+  "valid": true
+ },
+ {
+  "email": "a@[127.0.0.1]",
+  "valid": true
+ },
+ {
+  "email": "a@-b.com",
+  "valid": false
+ },
+ {
+  "email": "a@b-.com",
+  "valid": false
+ },
+ {
+  "email": "a@b.1com",
+  "valid": false
+ },
+ {
+  "email": "a@b.com1",
+  "valid": true
+ },
+ {
+  "email": "ü@b.com",
+  "valid": false
+ },
+ {
+  "email": "a@ü.com",
+  "valid": false
+ },
+ {
+  "email": "a b@c.com",
+  "valid": false
+ },
+ {
+  "email": "a@b..com",
+  "valid": false
+ },
+ {
+  "email": "a@xn--abc.com",
+  "valid": true
+ },
+ {
+  "email": "Ab@C.CoM",
+  "valid": true
+ },
+ {
+  "email": "a@b.c-d",
+  "valid": true
+ },
+ {
+  "email": "a@1.2.3.4",
+  "valid": false
+ },
+ {
+  "email": "a@b_c.com",
+  "valid": false
+ },
+ {
+  "email": "abc",
+  "valid": false
+ },
+ {
+  "email": "@b.com",
+  "valid": false
+ },
+ {
+  "email": "a@b.co\n",
+  "valid": false
+ },
+ {
+  "email": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@b.com",
+  "valid": false
+ },
+ {
+  "email": "a@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com",
+  "valid": false
+ }
+]

@@ -92,7 +92,8 @@ function createDisk(name: UploadsDiskName): UploadsDisk {
   }
 }
 
-function publicDisk(): UploadsDisk {
+/** Laravel's `public` disk (`storage/app/public`, served at /storage), whatever UPLOADS_DISK says: newsletter images live there. */
+export function publicDisk(): UploadsDisk {
   // turbopackIgnore: this folder is runtime data (a symlink to the uploads), never part of the bundle
   const root = path.resolve(process.env.UPLOADS_PUBLIC_ROOT || path.join(/* turbopackIgnore: true */ process.cwd(), "public", "storage"));
   const baseUrl = `${(process.env.APP_URL ?? "http://localhost:3000").replace(/\/+$/, "")}/storage`;

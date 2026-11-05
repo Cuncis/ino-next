@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 /**
  * Filament form fields with Filament's markup: a field wrapper (label, required mark,
  * error), the searchable select (`->searchable()->preload()`), the native select, and
  * text, number and textarea inputs.
  */
-type FieldShell = { id: string; label: string; required?: boolean; error?: string; helper?: string; wrapperClass?: string; children: ReactNode };
+type FieldShell = { id: string; label: string; required?: boolean; error?: string; helper?: string; wrapperClass?: string; children: ReactNode; /** a group of inputs is named by a div, not a label */ labelTag?: "label" | "div" };
 
 /** The ids a field's input points at: its helper text, then its error. */
 export function describedBy(id: string, helper?: string, error?: string): string | undefined {
@@ -27,17 +27,27 @@ export function FiHelperText({ id, text }: { id: string; text: string }) {
   );
 }
 
-export function FiField({ id, label, required, error, helper, wrapperClass = "", children }: FieldShell) {
+export function FiField({ id, label, required, error, helper, wrapperClass = "", children, labelTag = "label" }: FieldShell) {
+  const labelContent = (
+    <span className="fi-fo-field-label-content">
+      {label}
+      {required ? <sup className="fi-fo-field-label-required-mark">*</sup> : null}
+    </span>
+  );
+
   return (
     <div data-field-wrapper="" className={`${wrapperClass ? `${wrapperClass} ` : ""}fi-fo-field`}>
       <div className="fi-fo-field-label-col">
         <div className="fi-fo-field-label-ctn">
-          <label htmlFor={id} className="fi-fo-field-label">
-            <span className="fi-fo-field-label-content">
-              {label}
-              {required ? <sup className="fi-fo-field-label-required-mark">*</sup> : null}
-            </span>
-          </label>
+          {labelTag === "div" ? (
+            <div id={`${id}-label`} className="fi-fo-field-label">
+              {labelContent}
+            </div>
+          ) : (
+            <label htmlFor={id} className="fi-fo-field-label">
+              {labelContent}
+            </label>
+          )}
         </div>
       </div>
       <div className="fi-fo-field-content-col">
@@ -110,7 +120,13 @@ export function FiSearchableSelect({
   labels,
   helper,
   searchUrl,
+  searchable = true,
+  clearable = true,
 }: Omit<FieldShell, "children" | "wrapperClass"> & {
+  /** `->native(false)` without `->searchable()`: a plain dropdown */
+  searchable?: boolean;
+  /** `->selectablePlaceholder(false)` keeps the choice from being cleared */
+  clearable?: boolean;
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
@@ -178,7 +194,7 @@ export function FiSearchableSelect({
         <div className="fi-input-wrp-content-ctn">
           <div className="fi-select-input" ref={root}>
             <div>
-              <div className={`fi-select-input-ctn${selected ? " fi-select-input-ctn-clearable" : ""}`}>
+              <div className={`fi-select-input-ctn${selected && clearable ? " fi-select-input-ctn-clearable" : ""}`}>
                 <button className="fi-select-input-btn" type="button" id={id} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
                   <div className="fi-select-input-value-ctn">
                     {selected ? <span className="fi-select-input-value-label">{selected.label}</span> : <span className="fi-select-input-placeholder">{labels.placeholder}</span>}
@@ -186,9 +202,11 @@ export function FiSearchableSelect({
                 </button>
                 {open ? (
                   <div className="fi-dropdown-panel fi-scrollable" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 30 }}>
-                    <div className="fi-select-input-search-ctn">
-                      <input className="fi-input" type="text" placeholder={labels.search} role="combobox" aria-controls={`${id}-listbox`} aria-expanded aria-label={`${label}: Search`} autoFocus value={term} onChange={(event) => setTerm(event.target.value)} />
-                    </div>
+                    {searchable ? (
+                      <div className="fi-select-input-search-ctn">
+                        <input className="fi-input" type="text" placeholder={labels.search} role="combobox" aria-controls={`${id}-listbox`} aria-expanded aria-label={`${label}: Search`} autoFocus value={term} onChange={(event) => setTerm(event.target.value)} />
+                      </div>
+                    ) : null}
                     {shown.length ? (
                       <ul id={`${id}-listbox`} role="listbox" className="fi-dropdown-list" aria-label={label}>
                         {shown.map((option) => (
@@ -213,7 +231,7 @@ export function FiSearchableSelect({
                     )}
                   </div>
                 ) : null}
-                {selected ? (
+                {selected && clearable ? (
                   <button type="button" className="fi-select-input-value-remove-btn" aria-label={labels.clear} onClick={() => onChange("")}>
                     <svg className="fi-icon fi-size-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                       <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
@@ -245,13 +263,17 @@ export function FiInput({
   autoFocus = false,
   min,
   max,
+  onBlur,
+  disabled = false,
 }: Omit<FieldShell, "children" | "wrapperClass"> & {
+  onBlur?: () => void;
+  disabled?: boolean;
   /** `->minValue()` / `->maxValue()`, which Filament also gives the input */
   min?: number;
   max?: number;
   value: string;
   onChange: (value: string) => void;
-  type?: "text" | "number" | "email" | "tel";
+  type?: "text" | "number" | "email" | "tel" | "url";
   placeholder?: string;
   maxLength?: number;
   /** `->integer()`: whole steps */
@@ -261,10 +283,11 @@ export function FiInput({
 }) {
   return (
     <FiField id={id} label={label} required={required} error={error} helper={helper}>
-      <div className={`fi-fo-text-input fi-input-wrp${error ? " fi-invalid" : ""}`}>
+      <div className={`fi-fo-text-input fi-input-wrp${disabled ? " fi-disabled" : ""}${error ? " fi-invalid" : ""}`}>
         <div className="fi-input-wrp-content-ctn">
           <input
             id={id}
+            disabled={disabled}
             required={required}
             type={type}
             inputMode={type === "number" ? (integer ? "numeric" : "decimal") : undefined}
@@ -277,6 +300,7 @@ export function FiInput({
             className="fi-input"
             value={value}
             onChange={(event) => onChange(event.target.value)}
+            onBlur={onBlur}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy(id, helper, error)}
           />
@@ -400,6 +424,47 @@ export function FiDateInput({ id, label, required, error, helper, value, onChang
       <div className={`fi-fo-date-time-picker fi-input-wrp${error ? " fi-invalid" : ""}`}>
         <div className="fi-input-wrp-content-ctn">
           <input id={id} required={required} type="date" className="fi-input" value={value} aria-describedby={describedBy(id, helper, error)} onChange={(event) => onChange(event.target.value)} />
+        </div>
+      </div>
+    </FiField>
+  );
+}
+
+/** CheckboxList with `->columns()`: the options in column-major order over `columns` columns from lg up. */
+export function FiCheckboxList({
+  id,
+  label,
+  required,
+  error,
+  helper,
+  options,
+  columns = 1,
+  value,
+  onChange,
+}: Omit<FieldShell, "children" | "wrapperClass" | "labelTag"> & { options: SelectOption[]; columns?: number; value: string[]; onChange: (value: string[]) => void }) {
+  return (
+    <FiField id={id} label={label} required={required} error={error} helper={helper} labelTag="div">
+      <div role="group" aria-describedby={describedBy(id, helper, error)} aria-labelledby={`${id}-label`} className="fi-fo-checkbox-list">
+        <div
+          className={`fi-grid fi-grid-direction-col${columns > 1 ? " lg:fi-grid-cols" : ""} fi-fo-checkbox-list-options`}
+          style={(columns > 1 ? { "--cols-lg": String(columns), "--cols-default": "1" } : { "--cols-default": "1" }) as unknown as CSSProperties}
+        >
+          {options.map((option) => (
+            <div key={option.value} className="fi-fo-checkbox-list-option-ctn">
+              <label className="fi-fo-checkbox-list-option">
+                <input
+                  type="checkbox"
+                  value={option.value}
+                  className={`fi-checkbox-input ${error ? "fi-invalid" : "fi-valid"}`}
+                  checked={value.includes(option.value)}
+                  onChange={(event) => onChange(event.target.checked ? [...value, option.value] : value.filter((item) => item !== option.value))}
+                />
+                <div className="fi-fo-checkbox-list-option-text">
+                  <span className="fi-fo-checkbox-list-option-label">{option.label}</span>
+                </div>
+              </label>
+            </div>
+          ))}
         </div>
       </div>
     </FiField>

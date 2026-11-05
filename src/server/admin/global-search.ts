@@ -1,10 +1,12 @@
 import { and, asc, isNull, sql } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
-import { attributes, categories, db, orders, payments, products, stockTransfers, suppliers } from "@/db";
+import { attributes, categories, chatConversations, coupons, customers, db, newsletters, orders, payments, products, stockTransfers, subscribers, suppliers } from "@/db";
 import { translate, type AdminLocale } from "@/lib/admin-i18n";
-import { branchScope, transferBranchScope } from "@/lib/branch-scope";
+import { branchScope, customerBranchScope, transferBranchScope } from "@/lib/branch-scope";
 import { authorizes, can, type StaffAccess } from "@/lib/permissions";
 import { CATALOG_PERMISSIONS } from "./catalog-records";
+import { COUPON_PERMISSIONS } from "./coupons";
+import { CUSTOMER_PERMISSIONS } from "./customers";
 import { ORDER_PERMISSIONS, searchWords } from "./orders";
 import { PRODUCT_PERMISSIONS } from "./products";
 import { TRANSFER_PERMISSIONS } from "./finance-transfers";
@@ -63,7 +65,59 @@ function catalogProvider(folder: string, label: string, slug: string, table: Par
   };
 }
 
+/**
+ * `column` matching every word, LIMIT at most, in no particular order: Filament's query
+ * has no ORDER BY, so PostgreSQL answers in its storage order (an updated row moves to
+ * the end), and the same unordered query here gets the same order.
+ */
+async function titles(table: PgTable & { id: AnyPgColumn }, column: AnyPgColumn, term: string, where?: ReturnType<typeof and>) {
+  return db
+    .select({ id: table.id, title: column })
+    .from(table as PgTable)
+    .where(and(where, searchWords(term, [sql`${column}`])))
+    .limit(LIMIT) as Promise<{ id: number; title: string }[]>;
+}
+
 const PROVIDERS: Provider[] = [
+  {
+    folder: "ChatConversations",
+    label: "plural:Percakapan",
+    allowed: (access) => can(access, "Inbox:Lihat"),
+    search: async (term) => (await titles(chatConversations, chatConversations.name, term)).map((row) => ({ title: row.title, url: `/admin/inbox/${row.id}` })),
+  },
+  {
+    folder: "Coupons",
+    label: "plural:Kupon",
+    allowed: (access) => authorizes(access, COUPON_PERMISSIONS, "viewAny"),
+    search: async (term) => (await titles(coupons, coupons.code, term, isNull(coupons.deletedAt))).map((row) => ({ title: row.title, url: `/admin/kupon/${row.id}/edit` })),
+  },
+  {
+    folder: "Customers",
+    label: "plural:Pelanggan",
+    allowed: (access) => authorizes(access, CUSTOMER_PERMISSIONS, "viewAny"),
+    search: async (term, staff, access) =>
+      (await titles(customers, customers.name, term, and(isNull(customers.deletedAt), customerBranchScope(staff)))).map((row) => ({
+        title: row.title,
+        url: authorizes(access, CUSTOMER_PERMISSIONS, "update") ? `/admin/pelanggan/${row.id}/edit` : `/admin/pelanggan?tableAction=view&tableActionRecord=${row.id}`,
+      })),
+  },
+  {
+    folder: "Newsletters",
+    label: "plural:Newsletter",
+    allowed: (access) => can(access, "Konten:Lihat"),
+    search: async (term, _staff, access) =>
+      (await titles(newsletters, newsletters.name, term)).map((row) => ({
+        title: row.title,
+        url: can(access, "Konten:Ubah") ? `/admin/newsletter/${row.id}/edit` : `/admin/newsletter?tableAction=view&tableActionRecord=${row.id}`,
+      })),
+  },
+  {
+    // no page for one subscriber: the list with its view action
+    folder: "Subscribers",
+    label: "plural:Subscriber",
+    allowed: (access) => can(access, "Konten:Lihat"),
+    search: async (term) => (await titles(subscribers, subscribers.email, term)).map((row) => ({ title: row.title, url: `/admin/subscriber?tableAction=view&tableActionRecord=${row.id}` })),
+  },
   catalogProvider("Attributes", "plural:Atribut", "atribut", attributes),
   catalogProvider("Categories", "plural:Kategori", "kategori", categories),
   catalogProvider("Suppliers", "plural:Pemasok", "pemasok", suppliers),

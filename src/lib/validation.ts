@@ -257,6 +257,18 @@ function runValidation<T extends Record<string, unknown>>(
           if (date === null || date <= today) fail(rule, message(rule, field, attributes, { date: "today" }));
           break;
         }
+        case "date":
+          if (typeof value !== "string" || Number.isNaN(Date.parse(value))) fail(rule, message(rule, field, attributes, {}));
+          break;
+        case "after_or_equal": {
+          // against another field holding a date (Y-m-d); an empty other field passes, as in Laravel
+          const other = valueAt(input, parameters[0]).value;
+
+          if (!isEmpty(other) && typeof value === "string" && typeof other === "string" && value.slice(0, 10) < other.slice(0, 10)) {
+            fail(rule, message(rule, field, attributes, { date: attributeName(parameters[0], attributes) }));
+          }
+          break;
+        }
         case "gt": {
           // Laravel's validateGt against another field: numbers compare as numbers, and an
           // empty other field (or a value of another type) never passes

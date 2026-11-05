@@ -54,6 +54,8 @@ export type NavItem = {
   active: boolean;
   children: NavItem[];
   hasActiveChild: boolean;
+  /** `getNavigationBadge()`, with its colour and tooltip */
+  badge?: { text: string; color: "danger"; tooltip: string };
 };
 
 function allowed(requires: Requirement, access: StaffAccess): boolean {
@@ -76,7 +78,7 @@ function isActive(url: string, pathname: string): boolean {
  * at all, as in Filament: a Kasir with Inventaris:Lihat gets no Stok entry (it sits
  * under Produk), and only staff who see Staf get Keamanan. The pages still open by URL.
  */
-export function adminNavigation(access: StaffAccess, pathname: string, locale: AdminLocale): NavItem[] {
+export function adminNavigation(access: StaffAccess, pathname: string, locale: AdminLocale, badges: Record<string, NavItem["badge"]> = {}): NavItem[] {
   const visible = DEFINITIONS.filter((definition) => allowed(definition.requires, access));
   const toItem = (definition: Definition): NavItem => ({
     label: translate(locale, definition.label),
@@ -85,6 +87,7 @@ export function adminNavigation(access: StaffAccess, pathname: string, locale: A
     active: isActive(definition.url, pathname),
     children: [],
     hasActiveChild: false,
+    badge: badges[definition.url],
   });
   const bySort = (a: Definition, b: Definition) => a.sort - b.sort || translate(locale, a.label).localeCompare(translate(locale, b.label));
 

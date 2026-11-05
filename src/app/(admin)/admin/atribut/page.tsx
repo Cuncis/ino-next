@@ -33,7 +33,7 @@ export default async function Page({ searchParams }: PageProps<"/admin/atribut">
       url: canEdit ? `/admin/atribut/${attribute.id}/edit` : null,
       cells: {
         name: { kind: "text", text: attribute.name },
-        type: { kind: "badge", text: t(toLabel(ATTRIBUTE_TYPES, attribute.type) ?? attribute.type), color: "gray" },
+        type: { kind: "badge", text: t(toLabel(ATTRIBUTE_TYPES, attribute.type) ?? attribute.type), color: "primary" },
         values: { kind: "text", text: values.length ? values.join(", ") : "—" },
         slug: { kind: "text", text: attribute.slug },
         created_at: { kind: "text", text: adminDateTime(attribute.createdAt, locale) ?? "" },

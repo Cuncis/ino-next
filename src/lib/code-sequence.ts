@@ -1,4 +1,4 @@
-import { like } from "drizzle-orm";
+import { and, like, type SQL } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import { db, type DbExecutor } from "@/db";
 
@@ -19,14 +19,16 @@ export async function nextCode(options: {
   prefix: string;
   pad?: number;
   floor?: number;
+  /** narrows the rows looked at, as a Laravel query with a global scope did */
+  where?: SQL;
   executor?: DbExecutor;
 }): Promise<string> {
-  const { table, column, prefix, pad = 3, floor = 0, executor = db } = options;
+  const { table, column, prefix, pad = 3, floor = 0, where, executor = db } = options;
 
   const rows = await executor
     .select({ code: column })
     .from(table)
-    .where(like(column, `${escapeLike(prefix)}%`));
+    .where(and(like(column, `${escapeLike(prefix)}%`), where));
 
   const highest = rows.reduce((max, { code }) => Math.max(max, leadingInteger(String(code).slice(prefix.length))), 0);
   const next = Math.max(highest, floor) + 1;

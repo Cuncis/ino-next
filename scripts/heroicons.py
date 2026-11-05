@@ -12,7 +12,8 @@ o-arrow-up-tray o-shield-exclamation o-table-cells o-arrow-path
 c-eye c-pencil-square c-trash m-chevron-left m-ellipsis-vertical m-funnel m-trash o-check-badge
 m-arrow-uturn-left m-arrow-left-end-on-rectangle c-x-mark o-trash o-arrow-uturn-left
 m-view-columns m-arrows-up-down m-check m-bars-2 m-chevron-up m-chevron-down o-arrow-down-tray
-o-shopping-cart o-inbox-arrow-down o-adjustments-horizontal o-plus""".split()
+o-shopping-cart o-inbox-arrow-down o-adjustments-horizontal o-plus
+o-user-minus o-cog-6-tooth o-paper-airplane o-eye m-plus m-chevron-up-down o-arrow-down o-arrow-up""".split()
 icons = {}
 for name in NAMES:
     svg = open(f"{SOURCE}/{name}.svg").read()

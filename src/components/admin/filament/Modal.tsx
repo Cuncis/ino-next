@@ -17,7 +17,7 @@ type ModalProps = {
   description?: ReactNode;
   icon?: string;
   iconColor?: FiColor;
-  width?: "md" | "4xl";
+  width?: "md" | "lg" | "4xl";
   alignment?: "start" | "center";
   slideOver?: boolean;
   /** an action's form: the footer's submit button submits it */
@@ -133,6 +133,8 @@ export function FiModal({
             className={windowClass}
             onSubmit={(event) => {
               event.preventDefault();
+              // a portal still bubbles through React's tree: keep the page's own form out of it
+              event.stopPropagation();
               onSubmit(event);
             }}
           >

@@ -36,12 +36,13 @@ type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "color"> & {
   loading?: boolean;
   /** wrap the label in a <span>, as modal footer buttons do */
   wrapLabel?: boolean;
+  size?: "sm" | "md";
 };
 
 /** `<x-filament::button>` as an action renders it (`fi-ac-btn-action fi-btn`). */
-export function FiButton({ color = "primary", icon, loading = false, wrapLabel = false, children, className = "", type = "button", ...rest }: ButtonProps) {
+export function FiButton({ color = "primary", icon, loading = false, wrapLabel = false, size = "md", children, className = "", type = "button", ...rest }: ButtonProps) {
   return (
-    <button type={type} className={`fi-ac-btn-action fi-btn fi-size-md ${BUTTON_COLORS[color]} ${loading ? "fi-processing" : ""} ${className}`.trim()} disabled={loading || rest.disabled} {...rest}>
+    <button type={type} className={`fi-ac-btn-action fi-btn fi-size-${size} ${BUTTON_COLORS[color]} ${loading ? "fi-processing" : ""} ${className}`.trim()} disabled={loading || rest.disabled} {...rest}>
       {loading ? <FiLoadingIndicator /> : icon ? <FiIcon name={icon} /> : null}
       {wrapLabel ? <span>{children}</span> : children}
     </button>
@@ -84,9 +85,9 @@ export function FiBadge({ color = "gray", size = "sm", children }: { color?: FiC
 }
 
 /** A page's heading row with its header actions (`fi-header`). */
-export function FiPageHeader({ heading, actions, breadcrumbs }: { heading: string; actions?: ReactNode; breadcrumbs?: { label: string; url?: string }[] }) {
+export function FiPageHeader({ heading, subheading, actions, breadcrumbs }: { heading: string; subheading?: string; actions?: ReactNode; breadcrumbs?: { label: string; url?: string }[] }) {
   return (
-    <header className="fi-header">
+    <header className={`fi-header${breadcrumbs?.length ? " fi-header-has-breadcrumbs" : ""}${subheading ? " fi-header-has-subheading" : ""}`}>
       <div>
         {breadcrumbs?.length ? (
           <nav className="fi-breadcrumbs">
@@ -107,6 +108,7 @@ export function FiPageHeader({ heading, actions, breadcrumbs }: { heading: strin
           </nav>
         ) : null}
         <h1 className="fi-header-heading">{heading}</h1>
+        {subheading ? <p className="fi-header-subheading">{subheading}</p> : null}
       </div>
       {actions ? (
         <div className="fi-header-actions-ctn">

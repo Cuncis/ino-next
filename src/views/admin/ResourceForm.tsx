@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { FiField, FiInput, FiNativeSelect, FiSearchableSelect, FiTagsInput, FiTextarea, FiHelperText, type SelectOption } from "@/components/admin/filament/Fields";
+import { FiCheckboxList, FiDateInput, FiField, FiInput, FiNativeSelect, FiSearchableSelect, FiTagsInput, FiTextarea, FiHelperText, type SelectOption } from "@/components/admin/filament/Fields";
 import { FiFileUpload } from "@/components/admin/filament/FileUpload";
 import type { ListAction } from "@/components/admin/filament/ListTable";
 import { FiConfirmModal, toastOnNextPage, useFiToast, type FiToast } from "@/components/admin/filament/Modal";
@@ -16,11 +16,23 @@ import { FiButton } from "@/components/admin/filament/ui";
  *
  * The form is sent as JSON, or as multipart (`data` plus the files) when it has a file field.
  */
-type Common = { name: string; label: string; required?: boolean; helper?: string; full?: boolean; visibleWhen?: { field: string; equals: string } };
+type Common = {
+  name: string;
+  label: string;
+  required?: boolean;
+  helper?: string;
+  full?: boolean;
+  /** shown only while another field holds (or doesn't hold) a value: `->visible(fn (Get $get) => …)` */
+  visibleWhen?: { field: string; equals: string } | { field: string; notEquals: string };
+  /** a label that follows another field: `->label(fn (Get $get) => …)` */
+  labelWhen?: { field: string; equals: string; label: string };
+};
 
 export type FormFieldSpec =
-  | (Common & { kind: "text"; inputType?: "text" | "email" | "tel"; maxLength?: number; placeholder?: string })
-  | (Common & { kind: "number"; integer?: boolean; min?: number; max?: number })
+  | (Common & { kind: "text"; inputType?: "text" | "email" | "tel"; maxLength?: number; placeholder?: string; /** upper-cased when the field loses focus */ uppercase?: boolean })
+  | (Common & { kind: "number"; integer?: boolean; min?: number; max?: number; placeholder?: string })
+  | (Common & { kind: "date" })
+  | (Common & { kind: "checkboxes"; options: SelectOption[]; columns?: number })
   | (Common & { kind: "select"; options: SelectOption[]; placeholder: string | null })
   | (Common & { kind: "searchable"; options: SelectOption[] })
   | (Common & { kind: "textarea"; rows?: number; maxLength?: number; placeholder?: string })
@@ -87,7 +99,8 @@ export function ResourceForm({
   const [generation, setGeneration] = useState(0);
   const set = (name: string, value: string | string[]) => setValues((current) => ({ ...current, [name]: value }));
   const selectLabels = { placeholder: labels.placeholder, search: labels.search, noResults: labels.noResults, clear: labels.clear };
-  const visible = (field: FormFieldSpec) => !field.visibleWhen || values[field.visibleWhen.field] === field.visibleWhen.equals;
+  const visible = (field: FormFieldSpec) =>
+    !field.visibleWhen || ("equals" in field.visibleWhen ? values[field.visibleWhen.field] === field.visibleWhen.equals : values[field.visibleWhen.field] !== field.visibleWhen.notEquals);
 
   const submit = async (another = false) => {
     setBusy(another ? "another" : "submit");
@@ -177,14 +190,29 @@ export function ResourceForm({
 
   const renderField = (field: FormFieldSpec): ReactNode => {
     const id = `form.${field.name}`;
-    const common = { id, label: field.label, required: field.required, error: errors[field.name], helper: field.helper };
+    const label = field.labelWhen && values[field.labelWhen.field] === field.labelWhen.equals ? field.labelWhen.label : field.label;
+    const common = { id, label, required: field.required, error: errors[field.name], helper: field.helper };
     const text = typeof values[field.name] === "string" ? (values[field.name] as string) : "";
 
     switch (field.kind) {
       case "text":
-        return <FiInput {...common} type={field.inputType ?? "text"} maxLength={field.maxLength} placeholder={field.placeholder} value={text} onChange={(value) => set(field.name, value)} />;
+        return (
+          <FiInput
+            {...common}
+            type={field.inputType ?? "text"}
+            maxLength={field.maxLength}
+            placeholder={field.placeholder}
+            value={text}
+            onChange={(value) => set(field.name, value)}
+            onBlur={field.uppercase ? () => set(field.name, text.toUpperCase()) : undefined}
+          />
+        );
       case "number":
-        return <FiInput {...common} type="number" integer={field.integer} min={field.min} max={field.max} value={text} onChange={(value) => set(field.name, value)} />;
+        return <FiInput {...common} type="number" integer={field.integer} min={field.min} max={field.max} placeholder={field.placeholder} value={text} onChange={(value) => set(field.name, value)} />;
+      case "date":
+        return <FiDateInput {...common} value={text} onChange={(value) => set(field.name, value)} />;
+      case "checkboxes":
+        return <FiCheckboxList {...common} options={field.options} columns={field.columns} value={Array.isArray(values[field.name]) ? (values[field.name] as string[]) : []} onChange={(value) => set(field.name, value)} />;
       case "select":
         return <FiNativeSelect {...common} options={field.options} placeholder={field.placeholder} value={text} onChange={(value) => set(field.name, value)} />;
       case "searchable":

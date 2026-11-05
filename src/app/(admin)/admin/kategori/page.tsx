@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: PageProps<"/admin/kategori"
     cells: {
       name: { kind: "text", text: category.name },
       slug: { kind: "text", text: category.slug },
-      status: { kind: "badge", text: t(toLabel(CATEGORY_STATUSES, category.status) ?? category.status), color: "gray" },
+      status: { kind: "badge", text: t(toLabel(CATEGORY_STATUSES, category.status) ?? category.status), color: "primary" },
       products_count: { kind: "text", text: String(category.productCount), alignRight: true },
     },
     actions: [

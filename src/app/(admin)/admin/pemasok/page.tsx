@@ -35,7 +35,7 @@ export default async function Page({ searchParams }: PageProps<"/admin/pemasok">
       products_count: { kind: "text", text: String(supplier.productCount), alignRight: true },
       revenue: { kind: "text", text: rupiah(supplier.revenue), alignRight: true },
       created_at: { kind: "text", text: adminDate(supplier.createdAt, locale) ?? "" },
-      status: { kind: "badge", text: t(toLabel(SUPPLIER_STATUSES, supplier.status) ?? supplier.status), color: "gray" },
+      status: { kind: "badge", text: t(toLabel(SUPPLIER_STATUSES, supplier.status) ?? supplier.status), color: "primary" },
     },
     actions: [
       ...(canEdit ? [{ key: "edit", label: t("Ubah"), icon: "c-pencil-square", color: "primary" as const, href: `/admin/pemasok/${supplier.id}/edit` }] : []),

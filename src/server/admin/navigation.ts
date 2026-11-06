@@ -18,6 +18,8 @@ type Definition = {
   sort: number;
   parent?: string;
   requires: Requirement;
+  /** a Filament page (not a resource) is only active on its own URL */
+  exact?: boolean;
 };
 
 const DEFINITIONS: Definition[] = [
@@ -44,7 +46,14 @@ const DEFINITIONS: Definition[] = [
   { label: "Hak Akses", url: "/admin/hak-akses", icon: "o-key", sort: 2, parent: "plural:Staf", requires: { permission: "Peran:Lihat" } },
   { label: "Keamanan", url: "/admin/keamanan", icon: "o-shield-exclamation", sort: 3, parent: "plural:Staf", requires: null },
   { label: "Media File", url: "/admin/media-file", icon: "o-photo", sort: 6, requires: { permission: "Media:Lihat" } },
-  { label: "Konten Website", url: "/admin/konten-website", icon: "o-paint-brush", sort: 7, requires: { permission: "Konten:Lihat" } },
+  { label: "Konten Website", url: "/admin/konten-website", icon: "o-paint-brush", sort: 7, requires: { permission: "Konten:Lihat" }, exact: true },
+  { label: "Beranda", url: "/admin/konten-website/beranda", icon: "o-home", sort: 1, parent: "Konten Website", requires: { permission: "Konten:Lihat" } },
+  { label: "FAQ", url: "/admin/konten-website/faq", icon: "o-question-mark-circle", sort: 2, parent: "Konten Website", requires: { permission: "Konten:Lihat" } },
+  { label: "Info Pengiriman", url: "/admin/konten-website/info-pengiriman", icon: "o-truck", sort: 3, parent: "Konten Website", requires: { permission: "Konten:Lihat" } },
+  { label: "Kebijakan Pengembalian Dana", url: "/admin/konten-website/pengembalian-dana", icon: "o-receipt-refund", sort: 4, parent: "Konten Website", requires: { permission: "Konten:Lihat" } },
+  { label: "Syarat & Ketentuan", url: "/admin/konten-website/syarat-ketentuan", icon: "o-scale", sort: 5, parent: "Konten Website", requires: { permission: "Konten:Lihat" } },
+  { label: "Kebijakan Privasi", url: "/admin/konten-website/kebijakan-privasi", icon: "o-shield-check", sort: 6, parent: "Konten Website", requires: { permission: "Konten:Lihat" } },
+  { label: "Footer & Perusahaan", url: "/admin/konten-website/footer", icon: "o-building-office-2", sort: 7, parent: "Konten Website", requires: { permission: "Konten:Lihat" } },
 ];
 
 export type NavItem = {
@@ -84,7 +93,7 @@ export function adminNavigation(access: StaffAccess, pathname: string, locale: A
     label: translate(locale, definition.label),
     url: definition.url,
     icon: definition.icon,
-    active: isActive(definition.url, pathname),
+    active: definition.exact ? pathname === definition.url : isActive(definition.url, pathname),
     children: [],
     hasActiveChild: false,
     badge: badges[definition.url],

@@ -265,9 +265,12 @@ export function FiInput({
   max,
   onBlur,
   disabled = false,
+  prefix,
 }: Omit<FieldShell, "children" | "wrapperClass"> & {
   onBlur?: () => void;
   disabled?: boolean;
+  /** `->prefix()`: a label before the input */
+  prefix?: string;
   /** `->minValue()` / `->maxValue()`, which Filament also gives the input */
   min?: number;
   max?: number;
@@ -284,6 +287,11 @@ export function FiInput({
   return (
     <FiField id={id} label={label} required={required} error={error} helper={helper}>
       <div className={`fi-fo-text-input fi-input-wrp${disabled ? " fi-disabled" : ""}${error ? " fi-invalid" : ""}`}>
+        {prefix ? (
+          <div className="fi-input-wrp-prefix fi-input-wrp-prefix-has-content fi-input-wrp-prefix-has-label">
+            <span className="fi-input-wrp-label">{prefix}</span>
+          </div>
+        ) : null}
         <div className="fi-input-wrp-content-ctn">
           <input
             id={id}
@@ -321,14 +329,16 @@ export function FiTextarea({
   rows,
   maxLength,
   placeholder,
-}: Omit<FieldShell, "children" | "wrapperClass"> & { value: string; onChange: (value: string) => void; rows?: number; maxLength?: number; placeholder?: string }) {
+  disabled = false,
+}: Omit<FieldShell, "children" | "wrapperClass"> & { value: string; onChange: (value: string) => void; rows?: number; maxLength?: number; placeholder?: string; disabled?: boolean }) {
   return (
     <FiField id={id} label={label} required={required} error={error} helper={helper} wrapperClass="fi-fo-textarea-wrp">
-      <div className={`fi-fo-textarea fi-input-wrp${error ? " fi-invalid" : ""}`}>
+      <div className={`fi-fo-textarea fi-input-wrp${disabled ? " fi-disabled" : ""}${error ? " fi-invalid" : ""}`}>
         <div className="fi-input-wrp-content-ctn">
           <div>
             <textarea
               id={id}
+              disabled={disabled}
               required={required}
               rows={rows}
               maxLength={maxLength}

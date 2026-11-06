@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
@@ -19,6 +19,8 @@ export interface UploadsDisk {
   /** Missing files are not an error. */
   delete(filePaths: string[]): Promise<void>;
   url(filePath: string): string;
+  /** Every file on the disk, as Laravel's `allFiles()` with sizes and modification times (seconds). */
+  list(): Promise<{ path: string; size: number; modified: number }[]>;
 }
 
 export type UploadsDiskName = "public" | "s3" | "gcs";
@@ -118,7 +120,28 @@ export function publicDisk(): UploadsDisk {
       await Promise.all(filePaths.map((filePath) => rm(resolve(filePath), { force: true })));
     },
     url: (filePath) => `${baseUrl}/${filePath}`,
+    async list() {
+      return (await filesUnder(root)).map((file) => ({ path: file.relative, size: file.size, modified: file.modified }));
+    },
   };
+}
+
+/**
+ * Every file under a folder (symlinked folders followed, as Flysystem's local adapter does),
+ * with its size and modification time. One recursive read, then the stats side by side:
+ * one at a time took half a minute for a few thousand product photos.
+ */
+export async function filesUnder(root: string): Promise<{ relative: string; size: number; modified: number }[]> {
+  const entries = await readdir(root, { recursive: true, withFileTypes: true }).catch(() => []);
+  const files = entries.filter((entry) => entry.isFile()).map((entry) => path.join(entry.parentPath, entry.name));
+
+  return Promise.all(
+    files.map(async (absolute) => {
+      const info = await stat(absolute);
+
+      return { relative: path.relative(root, absolute).split(path.sep).join("/"), size: info.size, modified: Math.floor(info.mtimeMs / 1000) };
+    }),
+  );
 }
 
 function s3Disk(): UploadsDisk {
@@ -171,6 +194,25 @@ function s3Disk(): UploadsDisk {
       );
     },
     url: (filePath) => `${baseUrl}/${filePath}`,
+    async list() {
+      const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+      const found: { path: string; size: number; modified: number }[] = [];
+      let token: string | undefined;
+
+      do {
+        const page = await (await client).send(new ListObjectsV2Command({ Bucket: bucket, ContinuationToken: token }));
+
+        for (const object of page.Contents ?? []) {
+          if (object.Key && !object.Key.endsWith("/")) {
+            found.push({ path: object.Key, size: object.Size ?? 0, modified: Math.floor((object.LastModified?.getTime() ?? 0) / 1000) });
+          }
+        }
+
+        token = page.IsTruncated ? page.NextContinuationToken : undefined;
+      } while (token);
+
+      return found;
+    },
   };
 }
 
@@ -201,6 +243,17 @@ function gcsDisk(): UploadsDisk {
       await Promise.all(filePaths.map((filePath) => target.file(objectName(filePath)).delete({ ignoreNotFound: true })));
     },
     url: (filePath) => `${baseUrl}/${objectName(filePath)}`,
+    async list() {
+      const [files] = await (await bucket).getFiles(prefix ? { prefix: `${prefix}/` } : {});
+
+      return files
+        .filter((file) => !file.name.endsWith("/"))
+        .map((file) => ({
+          path: prefix ? file.name.slice(prefix.length + 1) : file.name,
+          size: Number(file.metadata.size ?? 0),
+          modified: Math.floor(new Date(String(file.metadata.updated ?? 0)).getTime() / 1000),
+        }));
+    },
   };
 }
 

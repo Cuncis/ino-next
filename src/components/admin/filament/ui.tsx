@@ -37,12 +37,14 @@ type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "color"> & {
   /** wrap the label in a <span>, as modal footer buttons do */
   wrapLabel?: boolean;
   size?: "sm" | "md";
+  /** a bare `<x-filament::button>` (a page's own form button), not an action's */
+  plain?: boolean;
 };
 
 /** `<x-filament::button>` as an action renders it (`fi-ac-btn-action fi-btn`). */
-export function FiButton({ color = "primary", icon, loading = false, wrapLabel = false, size = "md", children, className = "", type = "button", ...rest }: ButtonProps) {
+export function FiButton({ color = "primary", icon, loading = false, wrapLabel = false, size = "md", plain = false, children, className = "", type = "button", ...rest }: ButtonProps) {
   return (
-    <button type={type} className={`fi-ac-btn-action fi-btn fi-size-${size} ${BUTTON_COLORS[color]} ${loading ? "fi-processing" : ""} ${className}`.trim()} disabled={loading || rest.disabled} {...rest}>
+    <button type={type} className={`${plain ? "" : "fi-ac-btn-action "}fi-btn fi-size-${size} ${BUTTON_COLORS[color]} ${loading ? "fi-processing" : ""} ${className}`.trim()} disabled={loading || rest.disabled} {...rest}>
       {loading ? <FiLoadingIndicator /> : icon ? <FiIcon name={icon} /> : null}
       {wrapLabel ? <span>{children}</span> : children}
     </button>

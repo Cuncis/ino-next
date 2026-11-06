@@ -245,7 +245,7 @@ export function NewsletterForm({
     const url = new URL(window.location.href);
 
     url.searchParams.set("isi", TABS[next]);
-    window.history.replaceState(window.history.state, "", url);
+    window.history.replaceState(null, "", url);
   };
 
   const headerActions =

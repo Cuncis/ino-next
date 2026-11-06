@@ -83,6 +83,9 @@ const RULES: Rule[] = [
   { pattern: /^\/admin\/peran\/([^/]+)\/edit$/, allowed: (access) => can(access, "Peran:Lihat") && can(access, "Peran:Ubah"), record: async (id) => (await findRole(id)) !== null },
   { pattern: /^\/admin\/peran\/([^/]+)$/, allowed: () => true, record: async () => false },
   { pattern: /^\/admin\/hak-akses$/, allowed: (access) => can(access, "Peran:Lihat") },
+  { pattern: /^\/admin\/konten-website$/, allowed: (access) => can(access, "Konten:Lihat") },
+  { pattern: /^\/admin\/konten-website\/(beranda|faq|info-pengiriman|pengembalian-dana|syarat-ketentuan|kebijakan-privasi|footer)$/, allowed: (access) => can(access, "Konten:Lihat") },
+  { pattern: /^\/admin\/media-file$/, allowed: (access) => can(access, "Media:Lihat") },
 ];
 
 /** The error response for this page, or null when the staff member may open it. */

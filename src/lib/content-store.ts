@@ -38,18 +38,24 @@ export async function readContent(key: string, executor: DbExecutor = db): Promi
   }
 }
 
+/**
+ * ContentStore::write(): `Setting::updateOrCreate()` of the JSON (as json_encode() writes
+ * it with JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), so an unchanged page keeps
+ * its row, updated_at included.
+ */
 export async function writeContent(key: string, content: Record<string, unknown>, executor: DbExecutor = db): Promise<void> {
-  const value = JSON.stringify(content);
+  const value = JSON.stringify(content).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
   const now = new Date();
-
-  const updated = await executor
-    .update(settings)
-    .set({ value, type: "json", updatedAt: now })
+  const [current] = await executor
+    .select({ id: settings.id, value: settings.value, type: settings.type })
+    .from(settings)
     .where(and(isNull(settings.branchId), eq(settings.key, key)))
-    .returning({ id: settings.id });
+    .limit(1);
 
-  if (updated.length === 0) {
+  if (!current) {
     await executor.insert(settings).values({ branchId: null, key, value, type: "json", createdAt: now, updatedAt: now });
+  } else if (current.value !== value || current.type !== "json") {
+    await executor.update(settings).set({ value, type: "json", updatedAt: now }).where(eq(settings.id, current.id));
   }
 }
 

@@ -13,7 +13,8 @@ c-eye c-pencil-square c-trash m-chevron-left m-ellipsis-vertical m-funnel m-tras
 m-arrow-uturn-left m-arrow-left-end-on-rectangle c-x-mark o-trash o-arrow-uturn-left
 m-view-columns m-arrows-up-down m-check m-bars-2 m-chevron-up m-chevron-down o-arrow-down-tray
 o-shopping-cart o-inbox-arrow-down o-adjustments-horizontal o-plus
-o-user-minus o-cog-6-tooth o-paper-airplane o-eye m-plus m-chevron-up-down o-arrow-down o-arrow-up""".split()
+o-user-minus o-cog-6-tooth o-paper-airplane o-eye m-plus m-chevron-up-down o-arrow-down o-arrow-up
+o-squares-2x2 o-megaphone o-rectangle-group o-star o-h1 o-building-office-2 o-pencil-square o-check o-document o-link o-clipboard o-list-bullet m-squares-2x2 o-magnifying-glass o-arrow-top-right-on-square o-truck o-receipt-refund o-scale o-shield-check o-question-mark-circle o-home o-photo o-document-text o-check-badge o-chat-bubble-left-right m-arrow-down-tray m-link m-clipboard-document m-trash""".split()
 icons = {}
 for name in NAMES:
     svg = open(f"{SOURCE}/{name}.svg").read()

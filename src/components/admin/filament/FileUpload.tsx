@@ -22,8 +22,19 @@ export function FiFileUpload({
   describedBy,
   existing,
   onExistingRemoved,
+  previewHeight,
+  openable = false,
+  openLabel = "Open in new tab",
+  avatar = false,
   onChange,
 }: {
+  /** `->imagePreviewHeight()`, in pixels */
+  previewHeight?: number;
+  /** `->openable()`: a link to open the saved file in a new tab */
+  openable?: boolean;
+  openLabel?: string;
+  /** `->avatar()`: a round panel, and the photo cropped square and resized to 500 × 500 in the browser before it is sent */
+  avatar?: boolean;
   /** the file already saved (`getUploadedFileUsing()`), shown first and loaded from its URL */
   existing?: { url: string } | null;
   onExistingRemoved?: () => void;
@@ -50,22 +61,28 @@ export function FiFileUpload({
     let order: FilePondFile[] = [];
 
     void (async () => {
-      const [{ create, registerPlugin }, size, type, exif, preview] = await Promise.all([
+      const [{ create, registerPlugin }, size, type, exif, preview, crop, resize, transform] = await Promise.all([
         import("filepond"),
         import("filepond-plugin-file-validate-size"),
         import("filepond-plugin-file-validate-type"),
         import("filepond-plugin-image-exif-orientation"),
         import("filepond-plugin-image-preview"),
+        import("filepond-plugin-image-crop"),
+        import("filepond-plugin-image-resize"),
+        import("filepond-plugin-image-transform"),
       ]);
 
       if (destroyed || !input.current) {
         return;
       }
 
-      registerPlugin(size.default, type.default, exif.default, preview.default);
+      registerPlugin(size.default, type.default, exif.default, preview.default, crop.default, resize.default, transform.default);
 
+      // the file as FilePond's transform plugin left it (cropped and resized for an avatar)
+      const prepared = new Map<string, File>();
       // FileOrigin.LOCAL (3) is the saved file, not one to send
-      const publish = () => changed.current(order.filter((item) => item.status !== 8 /* load error */ && item.origin !== 3).map((item) => item.file as File));
+      const publish = () =>
+        changed.current(order.filter((item) => item.status !== 8 /* load error */ && item.origin !== 3).map((item) => prepared.get(item.id) ?? (item.file as File)));
 
       pond = create(input.current, {
         acceptedFileTypes: accept,
@@ -73,14 +90,25 @@ export function FiFileUpload({
         allowReorder: reorderable,
         allowImagePreview: true,
         credits: false,
+        ...(previewHeight ? { imagePreviewHeight: previewHeight } : {}),
+        imageTransformOutputStripImageHead: false,
+        ...(avatar
+          ? {
+              imageCropAspectRatio: "1:1",
+              imageResizeTargetWidth: 500,
+              imageResizeTargetHeight: 500,
+              imageResizeMode: "cover" as const,
+              imageResizeUpscale: false,
+            }
+          : {}),
         itemInsertLocation: "before",
         maxFiles: maxFiles ?? null,
         maxFileSize: maxSizeKb ? `${maxSizeKb}KB` : null,
-        styleButtonProcessItemPosition: "right",
-        styleButtonRemoveItemPosition: "left",
-        styleLoadIndicatorPosition: "right",
-        stylePanelLayout: "compact",
-        styleProgressIndicatorPosition: "right",
+        styleButtonProcessItemPosition: avatar ? "center bottom" : "right",
+        styleButtonRemoveItemPosition: avatar ? "center bottom" : "left",
+        styleLoadIndicatorPosition: avatar ? "center bottom" : "right",
+        stylePanelLayout: avatar ? "compact circle" : "compact",
+        styleProgressIndicatorPosition: avatar ? "center bottom" : "right",
         files: existing ? [{ source: existing.url, options: { type: "local" } }] : [],
         // nothing to send yet: mark each file uploaded at once, as Livewire's upload would
         server: {
@@ -100,8 +128,28 @@ export function FiFileUpload({
           revert: (_id, load) => load(),
         },
         onaddfile: (error, item) => {
-          if (!error) {
-            order = [...order, item];
+          if (error) {
+            return;
+          }
+
+          order = [...order, item];
+          publish();
+
+          // Filament's insertOpenLink(): only for the saved file, and not on an avatar
+          if (openable && !avatar && item.origin === 3) {
+            const anchor = document.createElement("a");
+
+            anchor.className = "filepond--open-icon";
+            anchor.href = String(item.source);
+            anchor.target = "_blank";
+            anchor.setAttribute("aria-label", openLabel);
+            anchor.setAttribute("title", openLabel);
+            document.getElementById(`filepond--item-${item.id}`)?.querySelector(".filepond--file-info-main")?.prepend(anchor);
+          }
+        },
+        onpreparefile: (item, output) => {
+          if (output instanceof Blob) {
+            prepared.set(item.id, output instanceof File ? output : new File([output], item.filename, { type: output.type }));
             publish();
           }
         },
@@ -110,6 +158,7 @@ export function FiFileUpload({
             onExistingRemoved?.();
           }
 
+          prepared.delete(item.id);
           order = order.filter((other) => other.id !== item.id);
           publish();
         },
@@ -140,7 +189,7 @@ export function FiFileUpload({
   return (
     <>
       <div hidden data-field-accessibility="" data-preserve-filepond-description="" aria-describedby={describedBy} />
-      <div aria-labelledby={`${id}-label`} id={id} role="group" className="fi-fo-file-upload fi-align-start">
+      <div aria-labelledby={`${id}-label`} id={id} role="group" className={`fi-fo-file-upload${avatar ? " fi-fo-file-upload-avatar" : ""} fi-align-start`}>
         <div className="fi-fo-file-upload-input-ctn">
           <input ref={input} aria-labelledby={`${id}-label`} multiple={multiple} type="file" />
         </div>

@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { FiCheckboxList, FiDateInput, FiField, FiInput, FiNativeSelect, FiSearchableSelect, FiTagsInput, FiTextarea, FiHelperText, type SelectOption } from "@/components/admin/filament/Fields";
+import { FiCheckboxList, FiDateInput, FiField, FiInput, FiPasswordInput, FiToggle, FiNativeSelect, FiSearchableSelect, FiTagsInput, FiTextarea, FiHelperText, type SelectOption } from "@/components/admin/filament/Fields";
 import { FiFileUpload } from "@/components/admin/filament/FileUpload";
 import type { ListAction } from "@/components/admin/filament/ListTable";
 import { FiConfirmModal, toastOnNextPage, useFiToast, type FiToast } from "@/components/admin/filament/Modal";
@@ -26,20 +26,36 @@ type Common = {
   visibleWhen?: { field: string; equals: string } | { field: string; notEquals: string };
   /** a label that follows another field: `->label(fn (Get $get) => …)` */
   labelWhen?: { field: string; equals: string; label: string };
+  /** `->required(fn (Get $get) => …)`: required while a toggle is on */
+  requiredWhen?: { field: string; equals: string };
 };
 
 export type FormFieldSpec =
   | (Common & { kind: "text"; inputType?: "text" | "email" | "tel"; maxLength?: number; placeholder?: string; /** upper-cased when the field loses focus */ uppercase?: boolean })
   | (Common & { kind: "number"; integer?: boolean; min?: number; max?: number; placeholder?: string })
   | (Common & { kind: "date" })
-  | (Common & { kind: "checkboxes"; options: SelectOption[]; columns?: number })
+  | (Common & { kind: "checkboxes"; options: SelectOption[]; columns?: number; bulk?: { selectAll: string; deselectAll: string }; search?: { prompt: string; noResults: string } })
+  /** stored as "1" or "0" */
+  | (Common & { kind: "toggle" })
+  | (Common & { kind: "password"; labels: { show: string; hide: string } })
   | (Common & { kind: "select"; options: SelectOption[]; placeholder: string | null })
-  | (Common & { kind: "searchable"; options: SelectOption[] })
+  | (Common & { kind: "searchable"; options: SelectOption[]; placeholder?: string })
   | (Common & { kind: "textarea"; rows?: number; maxLength?: number; placeholder?: string })
   | (Common & { kind: "tags"; placeholder?: string; splitKeys?: string[] })
-  | (Common & { kind: "files"; hiddenLabel?: boolean; multiple?: boolean; accept?: string[]; maxSizeKb?: number; maxFiles?: number; reorderable?: boolean });
+  | (Common & {
+      kind: "files";
+      hiddenLabel?: boolean;
+      multiple?: boolean;
+      accept?: string[];
+      maxSizeKb?: number;
+      maxFiles?: number;
+      reorderable?: boolean;
+      /** the file already saved; removing it sends `{name}_removed: "1"` */
+      existing?: { url: string } | null;
+    });
 
-export type FormBlock = { section?: { id: string; heading: string }; columns: 1 | 2; fields: FormFieldSpec[] };
+/** A section is full width unless `half` (two sections side by side, as a two-column form lays them out). */
+export type FormBlock = { section?: { id: string; heading: string; description?: string; half?: boolean }; columns: 1 | 2; fields: FormFieldSpec[] };
 
 export type FormValues = Record<string, string | string[]>;
 
@@ -106,7 +122,9 @@ export function ResourceForm({
     setBusy(another ? "another" : "submit");
 
     try {
-      const data = Object.fromEntries(Object.entries(values).filter(([name]) => blocks.some((block) => block.fields.some((field) => field.name === name && visible(field)))));
+      const data = Object.fromEntries(
+        Object.entries(values).filter(([name]) => blocks.some((block) => block.fields.some((field) => (field.name === name || `${field.name}_removed` === name) && visible(field)))),
+      );
       const hasFiles = blocks.some((block) => block.fields.some((field) => field.kind === "files"));
       let body: BodyInit;
       const headers: Record<string, string> = { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" };
@@ -191,7 +209,8 @@ export function ResourceForm({
   const renderField = (field: FormFieldSpec): ReactNode => {
     const id = `form.${field.name}`;
     const label = field.labelWhen && values[field.labelWhen.field] === field.labelWhen.equals ? field.labelWhen.label : field.label;
-    const common = { id, label, required: field.required, error: errors[field.name], helper: field.helper };
+    const required = field.required || (field.requiredWhen ? values[field.requiredWhen.field] === field.requiredWhen.equals : false);
+    const common = { id, label, required, error: errors[field.name], helper: field.helper };
     const text = typeof values[field.name] === "string" ? (values[field.name] as string) : "";
 
     switch (field.kind) {
@@ -212,11 +231,25 @@ export function ResourceForm({
       case "date":
         return <FiDateInput {...common} value={text} onChange={(value) => set(field.name, value)} />;
       case "checkboxes":
-        return <FiCheckboxList {...common} options={field.options} columns={field.columns} value={Array.isArray(values[field.name]) ? (values[field.name] as string[]) : []} onChange={(value) => set(field.name, value)} />;
+        return (
+          <FiCheckboxList
+            {...common}
+            options={field.options}
+            columns={field.columns}
+            bulk={field.bulk}
+            search={field.search}
+            value={Array.isArray(values[field.name]) ? (values[field.name] as string[]) : []}
+            onChange={(value) => set(field.name, value)}
+          />
+        );
+      case "toggle":
+        return <FiToggle id={id} label={label} required={required} value={text === "1"} onChange={(value) => set(field.name, value ? "1" : "0")} />;
+      case "password":
+        return <FiPasswordInput {...common} labels={field.labels} value={text} onChange={(value) => set(field.name, value)} />;
       case "select":
         return <FiNativeSelect {...common} options={field.options} placeholder={field.placeholder} value={text} onChange={(value) => set(field.name, value)} />;
       case "searchable":
-        return <FiSearchableSelect {...common} options={field.options} labels={selectLabels} value={text} onChange={(value) => set(field.name, value)} />;
+        return <FiSearchableSelect {...common} options={field.options} labels={{ ...selectLabels, placeholder: field.placeholder ?? selectLabels.placeholder }} value={text} onChange={(value) => set(field.name, value)} />;
       case "textarea":
         return <FiTextarea {...common} rows={field.rows} maxLength={field.maxLength} placeholder={field.placeholder} value={text} onChange={(value) => set(field.name, value)} />;
       case "tags":
@@ -258,6 +291,8 @@ export function ResourceForm({
                 maxSizeKb={field.maxSizeKb}
                 maxFiles={field.maxFiles}
                 reorderable={field.reorderable}
+                existing={field.existing}
+                onExistingRemoved={() => set(`${field.name}_removed`, "1")}
                 describedBy={field.helper ? `${id}-helper-text` : undefined}
                 onChange={(list) => setFiles((current) => ({ ...current, [field.name]: list }))}
               />
@@ -292,7 +327,7 @@ export function ResourceForm({
                 <Grid columns={2}>
                   {blocks.map((block, index) =>
                     block.section ? (
-                      <Col key={block.section.id} full>
+                      <Col key={block.section.id} full={!block.section.half}>
                         <div id={`form.${block.section.id}::data::section`} className="fi-sc-section">
                           <section aria-labelledby={`form.${block.section.id}::data::section-heading`} className="fi-section fi-section-has-header">
                             <header className="fi-section-header">
@@ -301,6 +336,11 @@ export function ResourceForm({
                                   <h2 id={`form.${block.section.id}::data::section-heading`} className="fi-section-header-heading">
                                     {block.section.heading}
                                   </h2>
+                                  {block.section.description ? (
+                                    <p id={`form.${block.section.id}::data::section-description`} className="fi-section-header-description">
+                                      {block.section.description}
+                                    </p>
+                                  ) : null}
                                 </div>
                               </div>
                             </header>

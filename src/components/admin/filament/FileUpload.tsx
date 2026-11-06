@@ -20,8 +20,13 @@ export function FiFileUpload({
   maxFiles,
   reorderable = false,
   describedBy,
+  existing,
+  onExistingRemoved,
   onChange,
 }: {
+  /** the file already saved (`getUploadedFileUsing()`), shown first and loaded from its URL */
+  existing?: { url: string } | null;
+  onExistingRemoved?: () => void;
   id: string;
   multiple?: boolean;
   accept?: string[];
@@ -59,7 +64,8 @@ export function FiFileUpload({
 
       registerPlugin(size.default, type.default, exif.default, preview.default);
 
-      const publish = () => changed.current(order.filter((item) => item.status !== 8 /* load error */).map((item) => item.file as File));
+      // FileOrigin.LOCAL (3) is the saved file, not one to send
+      const publish = () => changed.current(order.filter((item) => item.status !== 8 /* load error */ && item.origin !== 3).map((item) => item.file as File));
 
       pond = create(input.current, {
         acceptedFileTypes: accept,
@@ -75,8 +81,17 @@ export function FiFileUpload({
         styleLoadIndicatorPosition: "right",
         stylePanelLayout: "compact",
         styleProgressIndicatorPosition: "right",
+        files: existing ? [{ source: existing.url, options: { type: "local" } }] : [],
         // nothing to send yet: mark each file uploaded at once, as Livewire's upload would
         server: {
+          load: (source, load, error) => {
+            void fetch(source, { credentials: "same-origin" })
+              .then((response) => (response.ok ? response.blob() : Promise.reject(new Error(String(response.status)))))
+              .then(load)
+              .catch(() => error("Gagal memuat berkas"));
+
+            return { abort: () => {} };
+          },
           process: (_field, _file, _metadata, load) => {
             load(String(Date.now()));
 
@@ -91,6 +106,10 @@ export function FiFileUpload({
           }
         },
         onremovefile: (_error, item) => {
+          if (item.origin === 3) {
+            onExistingRemoved?.();
+          }
+
           order = order.filter((other) => other.id !== item.id);
           publish();
         },

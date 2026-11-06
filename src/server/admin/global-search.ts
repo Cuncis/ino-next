@@ -1,10 +1,11 @@
 import { and, asc, isNull, sql } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
-import { attributes, categories, chatConversations, coupons, customers, db, newsletters, orders, payments, products, stockTransfers, subscribers, suppliers } from "@/db";
+import { attributes, branches, categories, chatConversations, roles, users, coupons, customers, db, newsletters, orders, payments, products, stockTransfers, subscribers, suppliers } from "@/db";
 import { translate, type AdminLocale } from "@/lib/admin-i18n";
 import { branchScope, customerBranchScope, transferBranchScope } from "@/lib/branch-scope";
 import { authorizes, can, type StaffAccess } from "@/lib/permissions";
 import { CATALOG_PERMISSIONS } from "./catalog-records";
+import { BRANCH_PERMISSIONS } from "./branches";
 import { COUPON_PERMISSIONS } from "./coupons";
 import { CUSTOMER_PERMISSIONS } from "./customers";
 import { ORDER_PERMISSIONS, searchWords } from "./orders";
@@ -79,6 +80,30 @@ async function titles(table: PgTable & { id: AnyPgColumn }, column: AnyPgColumn,
 }
 
 const PROVIDERS: Provider[] = [
+  {
+    folder: "Branches",
+    label: "plural:Cabang",
+    allowed: (access) => authorizes(access, BRANCH_PERMISSIONS, "viewAny"),
+    search: async (term, _staff, access) =>
+      (await titles(branches, branches.name, term, isNull(branches.deletedAt))).map((row) => ({
+        title: row.title,
+        url: authorizes(access, BRANCH_PERMISSIONS, "update") ? `/admin/cabang/${row.id}/edit` : `/admin/cabang?tableAction=view&tableActionRecord=${row.id}`,
+      })),
+  },
+  {
+    // no policy: whoever sees Staf may edit
+    folder: "Staff",
+    label: "plural:Staf",
+    allowed: (access) => can(access, "Pengaturan:Ubah"),
+    search: async (term) => (await titles(users, users.name, term, isNull(users.deletedAt))).map((row) => ({ title: row.title, url: `/admin/staf/${row.id}/edit` })),
+  },
+  {
+    folder: "Roles",
+    label: "plural:Peran",
+    allowed: (access) => can(access, "Peran:Lihat"),
+    search: async (term, _staff, access) =>
+      (await titles(roles, roles.name, term)).map((row) => ({ title: row.title, url: can(access, "Peran:Ubah") ? `/admin/peran/${row.id}/edit` : `/admin/peran?tableAction=view&tableActionRecord=${row.id}` })),
+  },
   {
     folder: "ChatConversations",
     label: "plural:Percakapan",

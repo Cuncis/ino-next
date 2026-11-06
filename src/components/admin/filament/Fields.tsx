@@ -441,15 +441,55 @@ export function FiCheckboxList({
   columns = 1,
   value,
   onChange,
-}: Omit<FieldShell, "children" | "wrapperClass" | "labelTag"> & { options: SelectOption[]; columns?: number; value: string[]; onChange: (value: string[]) => void }) {
+  bulk,
+  search,
+}: Omit<FieldShell, "children" | "wrapperClass" | "labelTag"> & {
+  options: SelectOption[];
+  columns?: number;
+  value: string[];
+  onChange: (value: string[]) => void;
+  /** `->bulkToggleable()`: "Pilih semua" / "Batalkan semua pilihan" over the options shown */
+  bulk?: { selectAll: string; deselectAll: string };
+  /** `->searchable()`: its prompt and "nothing found" message */
+  search?: { prompt: string; noResults: string };
+}) {
+  const [term, setTerm] = useState("");
+  const needle = term.trim().toLowerCase();
+  const shown = needle ? options.filter((option) => option.label.toLowerCase().includes(needle)) : options;
+  const allChecked = shown.length > 0 && shown.every((option) => value.includes(option.value));
+  const toggleAll = () =>
+    onChange(allChecked ? value.filter((item) => !shown.some((option) => option.value === item)) : [...value, ...shown.map((option) => option.value).filter((item) => !value.includes(item))]);
+
   return (
     <FiField id={id} label={label} required={required} error={error} helper={helper} labelTag="div">
       <div role="group" aria-describedby={describedBy(id, helper, error)} aria-labelledby={`${id}-label`} className="fi-fo-checkbox-list">
+        {search ? (
+          <div className="fi-input-wrp fi-fo-checkbox-list-search-input-wrp">
+            <div className="fi-input-wrp-prefix fi-input-wrp-prefix-has-content fi-inline">
+              <svg className="fi-icon fi-size-md fi-color fi-color-gray fi-text-color-400 dark:fi-text-color-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="fi-input-wrp-content-ctn">
+              <input aria-label={search.prompt} placeholder={search.prompt} type="search" className="fi-input fi-input-has-inline-prefix" value={term} onChange={(event) => setTerm(event.target.value)} />
+            </div>
+          </div>
+        ) : null}
+        {bulk && options.length ? (
+          <div className="fi-fo-checkbox-list-actions">
+            <span>
+              <button type="button" className="fi-ac-link-action fi-link fi-size-sm fi-color fi-color-primary fi-text-color-700 dark:fi-text-color-400" onClick={toggleAll}>
+                <span className="fi-link-label">{allChecked ? bulk.deselectAll : bulk.selectAll}</span>
+              </button>
+            </span>
+          </div>
+        ) : null}
         <div
           className={`fi-grid fi-grid-direction-col${columns > 1 ? " lg:fi-grid-cols" : ""} fi-fo-checkbox-list-options`}
           style={(columns > 1 ? { "--cols-lg": String(columns), "--cols-default": "1" } : { "--cols-default": "1" }) as unknown as CSSProperties}
+          hidden={search !== undefined && shown.length === 0}
         >
-          {options.map((option) => (
+          {shown.map((option) => (
             <div key={option.value} className="fi-fo-checkbox-list-option-ctn">
               <label className="fi-fo-checkbox-list-option">
                 <input
@@ -465,6 +505,94 @@ export function FiCheckboxList({
               </label>
             </div>
           ))}
+        </div>
+        {search && needle && shown.length === 0 ? (
+          <div role="status" aria-live="polite" className="fi-fo-checkbox-list-no-search-results-message">
+            {search.noResults}
+          </div>
+        ) : null}
+      </div>
+    </FiField>
+  );
+}
+
+/** Toggle (`<x-filament::toggle>`) with its label beside it, as a form field. */
+export function FiToggle({ id, label, required, value, onChange }: { id: string; label: string; required?: boolean; value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <div data-field-wrapper="" className="fi-fo-field">
+      <div className="fi-fo-field-label-col">
+        <div className="fi-fo-field-label-ctn">
+          <label htmlFor={id} className="fi-fo-field-label">
+            <button
+              role="switch"
+              type="button"
+              aria-checked={value}
+              id={id}
+              className={`fi-fo-toggle fi-toggle ${value ? "fi-toggle-on fi-color fi-color-primary fi-bg-color-600 fi-text-color-600 dark:fi-bg-color-500" : "fi-toggle-off"}`}
+              onClick={() => onChange(!value)}
+            >
+              <div>
+                <div aria-hidden="true" />
+                <div aria-hidden="true" />
+              </div>
+            </button>
+            <span className="fi-fo-field-label-content">
+              {label}
+              {required ? <sup className="fi-fo-field-label-required-mark">*</sup> : null}
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A password TextInput with `->revealable()`: the eye shows what was typed, the struck eye hides it again. */
+export function FiPasswordInput({
+  id,
+  label,
+  required,
+  error,
+  helper,
+  value,
+  onChange,
+  labels,
+}: Omit<FieldShell, "children" | "wrapperClass"> & { value: string; onChange: (value: string) => void; labels: { show: string; hide: string } }) {
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <FiField id={id} label={label} required={required} error={error} helper={helper}>
+      <div className={`fi-fo-text-input fi-input-wrp${error ? " fi-invalid" : ""}`}>
+        <div className="fi-input-wrp-content-ctn">
+          <input
+            id={id}
+            required={required}
+            type={revealed ? "text" : "password"}
+            className="fi-input fi-revealable"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={describedBy(id, helper, error)}
+          />
+        </div>
+        <div className="fi-input-wrp-suffix">
+          <div className="fi-input-wrp-actions">
+            <button title={revealed ? labels.hide : labels.show} aria-label={revealed ? labels.hide : labels.show} type="button" className="fi-ac-icon-btn-action fi-icon-btn fi-size-sm" onClick={() => setRevealed(!revealed)}>
+              <svg className="fi-icon fi-size-md" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                {revealed ? (
+                  <>
+                    <path fillRule="evenodd" d="M3.28 2.22a.75.75 0 0 0-1.06 1.06l14.5 14.5a.75.75 0 1 0 1.06-1.06l-1.745-1.745a10.029 10.029 0 0 0 3.3-4.38 1.651 1.651 0 0 0 0-1.185A10.004 10.004 0 0 0 9.999 3a9.956 9.956 0 0 0-4.744 1.194L3.28 2.22ZM7.752 6.69l1.092 1.092a2.5 2.5 0 0 1 3.374 3.373l1.091 1.092a4 4 0 0 0-5.557-5.557Z" clipRule="evenodd" />
+                    <path d="m10.748 13.93 2.523 2.523a9.987 9.987 0 0 1-3.27.547c-4.258 0-7.894-2.66-9.337-6.41a1.651 1.651 0 0 1 0-1.186A10.007 10.007 0 0 1 2.839 6.02L6.07 9.252a4 4 0 0 0 4.678 4.678Z" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+                    <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 0 1 0-1.186A10.004 10.004 0 0 1 10 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0 1 10 17c-4.257 0-7.893-2.66-9.336-6.41ZM14 10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" clipRule="evenodd" />
+                  </>
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </FiField>

@@ -1,7 +1,10 @@
 import { authorizes, can, loadStaffAccess, type StaffAccess } from "@/lib/permissions";
 import { errorPageResponse } from "@/server/error-page";
 import { CATALOG_PERMISSIONS, findAttribute, findCategory, findSupplier } from "./catalog-records";
+import { BRANCH_PERMISSIONS, findBranch } from "./branches";
 import { COUPON_PERMISSIONS, findCoupon } from "./coupons";
+import { findRole } from "./roles";
+import { findStaffAccount } from "./staff-accounts";
 import { findConversation } from "./inbox";
 import { findNewsletter } from "./newsletters";
 import { CUSTOMER_PERMISSIONS, findCustomer } from "./customers";
@@ -72,6 +75,14 @@ const RULES: Rule[] = [
   { pattern: /^\/admin\/subscriber$/, allowed: (access) => can(access, "Konten:Lihat") },
   ...catalogRules("pelanggan", findCustomer, CUSTOMER_PERMISSIONS),
   ...catalogRules("kupon", findCoupon, COUPON_PERMISSIONS),
+  ...catalogRules("cabang", findBranch, BRANCH_PERMISSIONS),
+  // Staf has no policy: whoever sees it (Pengaturan:Ubah) may create and edit
+  ...catalogRules("staf", findStaffAccount, { viewAny: "Pengaturan:Ubah", create: "Pengaturan:Ubah", update: "Pengaturan:Ubah", delete: "Pengaturan:Ubah" }),
+  { pattern: /^\/admin\/peran$/, allowed: (access) => can(access, "Peran:Lihat") },
+  { pattern: /^\/admin\/peran\/create$/, allowed: (access) => can(access, "Peran:Lihat") && can(access, "Peran:Ubah") },
+  { pattern: /^\/admin\/peran\/([^/]+)\/edit$/, allowed: (access) => can(access, "Peran:Lihat") && can(access, "Peran:Ubah"), record: async (id) => (await findRole(id)) !== null },
+  { pattern: /^\/admin\/peran\/([^/]+)$/, allowed: () => true, record: async () => false },
+  { pattern: /^\/admin\/hak-akses$/, allowed: (access) => can(access, "Peran:Lihat") },
 ];
 
 /** The error response for this page, or null when the staff member may open it. */

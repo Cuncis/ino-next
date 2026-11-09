@@ -89,7 +89,7 @@ fi
 
 echo "==> Deploying Inofarma ($(date '+%Y-%m-%d %H:%M:%S'))"
 mkdir -p "$RELEASES" "$SHARED/logs"
-[ -f "$SHARED/.env.local" ] || { echo "!! $SHARED/.env.local is missing (DEPLOYMENT.md §1.5)"; exit 1; }
+[ -f "$SHARED/.env.local" ] || { echo "!! $SHARED/.env.local is missing (DEPLOYMENT.md §1.3)"; exit 1; }
 
 say "Fetching $BRANCH"
 if [ -d "$REPO" ]; then

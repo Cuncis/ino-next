@@ -2,8 +2,8 @@
 
 How to run the Next.js app on the VPS that serves Laravel today, and how to ship updates
 afterward. It follows Laravel's `DEPLOYMENT.md` (in `~/inofarma`): same server, same user
-(`cuncis`), same PostgreSQL database, same upload folder. Switching the live domain over
-is the cutover runbook's job; this sets everything up next to Laravel without touching it.
+(`cuncis`), same PostgreSQL database, same upload folder. §1 sets everything up next to
+Laravel without touching it; §5 moves the live domain over (and back, if needed).
 
 Commands prefixed `local$` run on your machine, `vps$` on the server as `cuncis`.
 
@@ -99,7 +99,7 @@ vps$ chmod 600 /var/www/inofarma-next/shared/.env.local
 
 | Key | Value |
 | --- | --- |
-| `DATABASE_URL` | `postgres://inofarma_user:PASSWORD@127.0.0.1:5432/inofarma_db`: Laravel's `DB_*`, the same database |
+| `DATABASE_URL` | `postgres://inofarma:PASSWORD@127.0.0.1:5432/inofarma_db`: Laravel's `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`; the same database |
 | `REDIS_URL` | `redis://127.0.0.1:6379` |
 | `APP_KEY` | **Laravel's `APP_KEY`, exactly.** 2FA secrets in the database are encrypted with it and links in sent emails are signed with it |
 | `APP_PREVIOUS_KEYS` | Laravel's `APP_PREVIOUS_KEYS`, if it has any |
@@ -132,21 +132,22 @@ answer and keeps the release. That's expected the first time; `current` points a
 
 ### 1.5 Supervisor
 
-Add only the web server for now. **The worker waits for the cutover**: Laravel's
+Only the web server is installed now. **The worker waits for the cutover**: Laravel's
 `queue:work` and `schedule:run` are still running, and two schedulers would expire
-orders and send reminders twice. (`supervisorctl update` would start both, so it is
-not used here.)
+orders and send reminders twice. Its file (`inofarma-next-worker.conf`) is copied in by
+`deploy/cutover.sh switch` and taken out again by `rollback`, so not even a reboot can
+start it early.
 
 ```
-vps$ sudo cp /var/www/inofarma-next/current/deploy/supervisor/inofarma-next.conf /etc/supervisor/conf.d/
+vps$ sudo cp /var/www/inofarma-next/current/deploy/supervisor/inofarma-next-web.conf /etc/supervisor/conf.d/
 vps$ sudo supervisorctl reread
 vps$ sudo supervisorctl add inofarma-next-web
 vps$ sudo supervisorctl status
 vps$ curl -s http://127.0.0.1:3000/up | grep -o 'Application up'
 ```
 
-Until the worker is added, each deploy ends with a harmless "no such process" when it
-tries to restart it.
+Until the cutover, each deploy ends with a harmless "no such process" when it tries to
+restart the worker.
 
 Allow the deploy script its two restarts without a password, and nothing else:
 
@@ -161,17 +162,23 @@ cuncis ALL=(root) NOPASSWD: /usr/bin/supervisorctl signal TERM inofarma-next-wor
 
 ### 1.6 Nginx
 
-`deploy/nginx/inofarma-next.conf` replaces Laravel's site at the cutover. Before that,
-try it on a second hostname (`next.yourdomain.com`, or a second DuckDNS name) so
-Laravel keeps the real one:
+`deploy/nginx/inofarma-next.conf` replaces Laravel's site at the cutover (§5). Before
+that, try it on a second hostname (`next.yourdomain.com`, or a second DuckDNS name
+pointing at the same server) so Laravel keeps the real one. The file has its HTTPS part
+written out, so get the trial certificate first, without letting certbot edit nginx:
 
 ```
-vps$ sudo cp /var/www/inofarma-next/current/deploy/nginx/inofarma-next.conf /etc/nginx/sites-available/inofarma-next
-vps$ sudo nano /etc/nginx/sites-available/inofarma-next      # server_name next.yourdomain.com
-vps$ sudo ln -s /etc/nginx/sites-available/inofarma-next /etc/nginx/sites-enabled/
+vps$ sudo certbot certonly --nginx -d next.yourdomain.com --deploy-hook "systemctl reload nginx"
+vps$ sudo cp /var/www/inofarma-next/current/deploy/nginx/inofarma-next.conf /etc/nginx/sites-available/inofarma-next-trial
+vps$ sudo sed -i 's/yourdomain\.com/next.yourdomain.com/g; s/ www\.next\.yourdomain\.com//' /etc/nginx/sites-available/inofarma-next-trial
+vps$ grep -E 'server_name|ssl_certificate' /etc/nginx/sites-available/inofarma-next-trial
+vps$ sudo ln -s /etc/nginx/sites-available/inofarma-next-trial /etc/nginx/sites-enabled/
 vps$ sudo nginx -t && sudo systemctl reload nginx
-vps$ sudo certbot --nginx -d next.yourdomain.com
 ```
+
+The `grep` must show only the trial name, and `/etc/letsencrypt/live/next.yourdomain.com/`
+(`sudo certbot certificates` lists the real certificate names). Keep the name
+`inofarma-next-trial`: `inofarma-next` is the name the cutover gives the live site.
 
 While that trial site uses the live database, anything done on it is real: orders,
 stock, emails. Look around and sign in; don't place orders there.
@@ -182,6 +189,8 @@ What the config does, and why (each was tested against `next start`):
   would be a 404.
 - `Host` is passed as the browser sent it: the app's CSRF check compares it with the
   `Origin` header.
+- Plain HTTP only redirects to HTTPS, from inside `location /`, so certbot's renewals
+  still get through.
 - `X-Forwarded-For` is overwritten with the real address, never appended: the sign-in,
   OTP and password-reset limits key on it, and a client could otherwise send its own.
 - `client_max_body_size 20M`, as Laravel; the app accepts the same (`next.config.ts`).
@@ -195,10 +204,13 @@ Laravel's backup section still shows `mysqldump`; the database is PostgreSQL now
 
 ```
 vps$ sudo cp /var/www/inofarma-next/current/deploy/backup.sh /usr/local/bin/inofarma-backup.sh
-vps$ sudo sh -c 'echo "127.0.0.1:5432:inofarma_db:inofarma_user:PASSWORD" > /root/.pgpass && chmod 600 /root/.pgpass'
+vps$ sudo sh -c 'echo "127.0.0.1:5432:inofarma_db:inofarma:PASSWORD" > /root/.pgpass && chmod 600 /root/.pgpass'
 vps$ sudo /usr/local/bin/inofarma-backup.sh && ls -la /var/backups/inofarma
 vps$ sudo crontab -e      # 0 2 * * * /usr/local/bin/inofarma-backup.sh
 ```
+
+The script signs in as `inofarma` (the role Laravel's §5.1 created). If Laravel's
+`DB_USERNAME` is another, change `DB_USER` at the top of the installed copy and in `.pgpass`.
 
 Restore one into a scratch database to be sure it works:
 `createdb inofarma_restore_test && pg_restore -d inofarma_restore_test /var/backups/inofarma/inofarma-DATE.dump`.
@@ -211,6 +223,10 @@ Restore one into a scratch database to be sure it works:
   a real file in the shared folder: delete it again with "Hapus permanen".
 - `sudo supervisorctl status`: `inofarma-next-web` RUNNING (no worker until cutover).
 - `tail -f /var/www/inofarma-next/shared/logs/web.log` stays free of errors meanwhile.
+
+Without its worker, the trial site sends nothing: an email or WhatsApp message caused by
+something done there waits in the Redis queue and goes out at the cutover.
+`deploy/cutover.sh status` shows how many wait.
 
 ---
 
@@ -232,14 +248,15 @@ install or build never touches the live site.
 
 ---
 
-## 3. Rollback
+## 3. Rolling back a release
 
 ```
 vps$ /var/www/inofarma-next/deploy.sh --rollback
 ```
 
 Back to the release before the live one (the newest 5 are kept). The database is shared
-and has no Next-only schema, so code rollbacks need no database step.
+and has no Next-only schema, so code rollbacks need no database step. (Going back to
+Laravel altogether is §5.4.)
 
 ---
 
@@ -248,3 +265,106 @@ and has no Next-only schema, so code rollbacks need no database step.
 - `shared/logs/web.log`, `shared/logs/worker.log` (rotated by Supervisor, 5 × 20 MB)
 - `https://yourdomain.com/up`: Laravel's health page, for uptime monitors
 - `redis-cli info memory`: sessions and the queue live here now
+
+---
+
+## 5. Cutover: Laravel to Next.js
+
+Both apps already use the same database and the same upload folder, so nothing is
+copied or migrated. Three things move from Laravel to Next, and `deploy/cutover.sh`
+moves them in this order:
+
+1. **the scheduler**: Laravel's `schedule:run` cron line is switched off (commented out)
+   before the Next worker starts, so orders never expire twice;
+2. **the web traffic**: one nginx reload swaps Laravel's site for the Next one, with
+   the same names and the same certificate;
+3. **the job queue**: Laravel's worker keeps running until its `jobs` table is empty
+   (chat reply emails wait there up to 2 minutes), then it is stopped and taken out of
+   Supervisor; then the Next worker is put in and started (queue and scheduler).
+
+No maintenance page is needed: during the switch every request is answered by one app or
+the other, both on the same data. A DOKU or Biteship notification arriving meanwhile is
+handled by whichever app has the traffic (same paths). What is lost: every session
+(customers and staff sign in again, guest carts are emptied), exactly as at the
+PostgreSQL switch. Signed links in emails sent by Laravel keep working (same `APP_KEY`).
+
+`cutover.sh` asks for sudo where it needs it, and can be run again at any point: it
+skips what is already done. Every command ends with `status`.
+
+### 5.1 The days before
+
+- §1 is done and the trial site has been looked at (§1.8).
+- The release to go live with is deployed (§2): `cutover.sh` and the nginx template are
+  taken from `current`.
+- Tell staff: they will have to sign in again (with 2FA), and when.
+- Pick a quiet time. The switch itself takes a few minutes, most of it waiting for
+  Laravel's queue.
+
+### 5.2 Prepare (changes nothing live)
+
+```
+vps$ cd /var/www/inofarma-next/current
+vps$ deploy/cutover.sh prepare
+```
+
+It checks that the Next web server answers, that the Next worker isn't running, and
+that Laravel's site, worker and cron line are where Laravel's DEPLOYMENT.md put them.
+It then writes `/etc/nginx/sites-available/inofarma-next` from the template, filled with
+the `server_name`s and `ssl_certificate` of Laravel's site, and has nginx check it. It is
+not enabled yet. Read what it reports; it warns if jobs from the trial site wait in
+the Next queue (they are real, and are sent at the switch).
+
+### 5.3 Switch
+
+```
+vps$ deploy/cutover.sh switch
+```
+
+1. backs up the database (`inofarma-DATE-before-cutover.dump`, §1.7);
+2. switches off Laravel's scheduler, and waits for a scheduled task still running;
+3. swaps the nginx sites (if `nginx -t` fails, the sites are put back and nothing is
+   reloaded);
+4. waits for Laravel's queue to empty (up to 15 minutes: a newsletter can take a while;
+   if it gives up, run `switch` again), then stops Laravel's worker, and renames its
+   Supervisor file to `inofarma-worker.conf.off`;
+5. copies `inofarma-next-worker.conf` into Supervisor and starts it.
+
+Right after:
+
+- `https://yourdomain.com` and `/admin` work; sign in.
+- `tail -f /var/www/inofarma-next/shared/logs/worker.log` says `Worker started, scheduler
+  on`; at the next five-minute mark the two expiry tasks log a line each.
+- Place one real order end to end, as after Laravel's first deploy (Laravel's §1.12):
+  payment page, DOKU's notification (`web.log`), the confirmation email.
+- `sudo certbot renew --dry-run` still succeeds with the new site.
+- If `switch` warned about Laravel's `failed_jobs`: those are not retried by Next; look
+  at them with `php artisan queue:failed` in `/var/www/inofarma` while it is still there.
+
+### 5.4 Rollback to Laravel
+
+Anything Next has written is in Laravel's own tables and formats (passwords as `$2y$`,
+encrypted values with the same key), so Laravel picks up where Next left off, orders
+placed in between included. No database step.
+
+```
+vps$ cd /var/www/inofarma-next/current
+vps$ deploy/cutover.sh rollback
+```
+
+1. swaps the nginx sites back, and starts Laravel's worker again;
+2. waits for the Next queue to empty (its worker still runs), then stops the Next worker
+   and takes it out of Supervisor;
+3. switches Laravel's scheduler back on.
+
+Everyone is signed out once more. The Next web server keeps running for the trial site;
+`switch` can be run again later.
+
+### 5.5 Afterward
+
+- Keep Laravel installed for 1–2 weeks as the fallback; `cutover.sh rollback` needs its
+  site, its worker file (`.off`) and its cron line (commented out, not deleted).
+- Remove the trial site: `sudo rm /etc/nginx/sites-enabled/inofarma-next-trial`, reload
+  nginx, `sudo certbot delete --cert-name next.yourdomain.com`.
+- When retiring Laravel, **keep `/var/www/inofarma/storage/app/public`**: the uploads
+  live there (`UPLOADS_PUBLIC_ROOT`, nginx `/storage/`). Moving them is a separate step:
+  move the folder, then change both of those.

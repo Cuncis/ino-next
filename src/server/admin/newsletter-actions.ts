@@ -1,4 +1,5 @@
 import { translate, type AdminLocale } from "@/lib/admin-i18n";
+import { withSniffedTypes } from "@/lib/sniff-mime";
 import { sendMail } from "@/lib/mail";
 import { can } from "@/lib/permissions";
 import { dispatch } from "@/lib/queue";
@@ -210,7 +211,7 @@ export async function uploadAttachmentAction(request: Request): Promise<Response
     return response;
   }
 
-  const [file] = (await formBody(request)).files.file ?? [];
+  const [file] = (await withSniffedTypes((await formBody(request)).files)).file ?? [];
   const attribute = { file: translate(locale, "file") };
 
   if (!file) {

@@ -1,4 +1,5 @@
 import { translate, type AdminLocale } from "@/lib/admin-i18n";
+import { withSniffedTypes } from "@/lib/sniff-mime";
 import { options, PRODUCT_STATUSES } from "@/lib/admin-options";
 import { authorizes, can } from "@/lib/permissions";
 import { validate, validationErrorResponse } from "@/lib/validation";
@@ -44,8 +45,10 @@ export async function createProductAction(request: Request): Promise<Response> {
     return response;
   }
 
-  const { data, files } = await formBody(request);
-  const photos = files.photos ?? [];
+  const body = await formBody(request);
+  const { data } = body;
+  // checked and named by what each file is (finfo), not by the browser's word
+  const photos = (await withSniffedTypes(body.files)).photos ?? [];
   const result = await validateProductForm(data, locale);
 
   if (!result.data) {
@@ -194,7 +197,7 @@ export async function uploadPhotosAction(request: Request, id: string): Promise<
     return notFound();
   }
 
-  const images = (await formBody(request)).files.images ?? [];
+  const images = (await withSniffedTypes((await formBody(request)).files)).images ?? [];
   const attribute = lcfirst(translate(locale, "Gambar"));
 
   if (!images.length) {

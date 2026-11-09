@@ -1,4 +1,5 @@
 import { authorizes, can, uploadTypes, type StaffAccess } from "@/lib/permissions";
+import { withSniffedTypes } from "@/lib/sniff-mime";
 import { validationErrorResponse } from "@/lib/validation";
 import { adminActionContext, bulkOutcomeJson, eachRecord, idsFrom, toastJson } from "./action-response";
 import {
@@ -56,7 +57,10 @@ export async function createAccessAction(request: Request, slug: AccessSlug): Pr
     return response;
   }
 
-  const { data, files } = await formBody(request);
+  const body = await formBody(request);
+  const { data } = body;
+  // a photo is checked and named by what it is (finfo), not by the browser's word
+  const files = await withSniffedTypes(body.files);
   let id: number;
 
   if (slug === "cabang") {
@@ -99,7 +103,10 @@ export async function updateAccessAction(request: Request, slug: AccessSlug, id:
     return response;
   }
 
-  const { data, files } = await formBody(request);
+  const body = await formBody(request);
+  const { data } = body;
+  // a photo is checked and named by what it is (finfo), not by the browser's word
+  const files = await withSniffedTypes(body.files);
 
   if (slug === "cabang") {
     const branch = await findBranch(Number(id));

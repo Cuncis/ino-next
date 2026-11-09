@@ -8,7 +8,7 @@ import { transaction } from "@/lib/queue";
 import { auditLog } from "@/server/audit";
 import { cancelOrder } from "@/server/orders/order-cancellation";
 import { orderCreated, updateOrder, type Order } from "@/server/orders/order-updates";
-import { handOverPickup, issuePickupCode } from "@/server/orders/pickup-code";
+import { handOverPickup, PickupCodeError, issuePickupCode } from "@/server/orders/pickup-code";
 import { bookShipment, reconcileShipment, type Shipment } from "@/server/shipping/shipment";
 import type { FiColor } from "@/components/admin/filament/ui";
 
@@ -198,7 +198,10 @@ export async function runOrderAction(
       try {
         await handOverPickup(order, String(data.code ?? ""), staff);
       } catch (error) {
-        return { status: "danger", title: error instanceof Error ? error.message : String(error) };
+        // only PickupCodeException is shown, as in Laravel; anything else is a server error
+        if (!(error instanceof PickupCodeError)) throw error;
+
+        return { status: "danger", title: error.message };
       }
 
       return { status: "success", title: "Pesanan #:number berhasil diserahkan.", replace: { number } };
